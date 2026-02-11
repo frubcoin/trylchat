@@ -147,24 +147,33 @@ export default class NekoChat implements Party.Server {
 
       if (!username) return;
 
-      // Whitelist Check
-      const whitelisted = await this.isWhitelisted(wallet || "");
-      if (!wallet || !whitelisted) {
-        sender.send(JSON.stringify({
-          type: "join-error",
-          reason: "Unauthorized. Your wallet is not on the whitelist."
-        }));
-        return;
-      }
-
-      // Token gating for holders room
+      // Access control: gated rooms use token ownership, others use whitelist
       const isGatedRoom = GATED_ROOMS.includes(this.room.id);
+
       if (isGatedRoom) {
+        // Token-gated rooms: only require holding the token
+        if (!wallet) {
+          sender.send(JSON.stringify({
+            type: "join-error",
+            reason: "You must connect a wallet to access this room."
+          }));
+          return;
+        }
         const holdsToken = await this.verifyTokenHolder(wallet);
         if (!holdsToken) {
           sender.send(JSON.stringify({
             type: "join-error",
             reason: "You must hold the required token to access this room."
+          }));
+          return;
+        }
+      } else {
+        // Non-gated rooms: whitelist check
+        const whitelisted = await this.isWhitelisted(wallet || "");
+        if (!wallet || !whitelisted) {
+          sender.send(JSON.stringify({
+            type: "join-error",
+            reason: "Unauthorized. Your wallet is not on the whitelist."
           }));
           return;
         }
