@@ -32,10 +32,19 @@ export default class NekoChat implements Party.Server {
     return memberWallets.split(",").map(w => w.trim()).filter(Boolean);
   }
 
-  private isWhitelisted(wallet: string): boolean {
+  private async getStoredMemberWallets(): Promise<string[]> {
+    return (await this.room.storage.get<string[]>("storedMemberWallets")) || [];
+  }
+
+  private async isWhitelisted(wallet: string): Promise<boolean> {
     const admins = this.getAdminWallets();
-    const members = this.getMemberWallets();
-    return admins.includes(wallet) || members.includes(wallet);
+    const envMembers = this.getMemberWallets();
+    const storedMembers = await this.getStoredMemberWallets();
+    return (
+      admins.includes(wallet) ||
+      envMembers.includes(wallet) ||
+      storedMembers.includes(wallet)
+    );
   }
   // Track message timestamps for rate limiting
   rateLimits = new Map<string, number[]>();
@@ -91,7 +100,8 @@ export default class NekoChat implements Party.Server {
       if (!username) return;
 
       // Whitelist Check
-      if (!wallet || !this.isWhitelisted(wallet)) {
+      const whitelisted = await this.isWhitelisted(wallet || "");
+      if (!wallet || !whitelisted) {
         sender.send(JSON.stringify({
           type: "join-error",
           reason: "Unauthorized. Your wallet is not on the whitelist."
@@ -276,16 +286,55 @@ export default class NekoChat implements Party.Server {
     }
 
     if (parsed.type === "chat") {
-      const state = sender.state as any;
-      if (!state?.username) return;
+      const { username, color, isAdmin } = sender.state as {
+        username: string;
+        color: string;
+        isAdmin: boolean;
+      };
 
+      if (!username) return;
+
+      // Handle Admin Commands
+      if (isAdmin && parsed.text.startsWith("/whitelist")) {
+        const parts = parsed.text.split(" ");
+        const subCommand = parts[1]; // add, bulk, remove
+        const val = parts.slice(2).join(" ");
+
+        let stored = await this.getStoredMemberWallets();
+
+        if (subCommand === "add") {
+          if (!stored.includes(val)) {
+            stored.push(val);
+            await this.room.storage.put("storedMemberWallets", stored);
+            sender.send(JSON.stringify({ type: "system-message", text: `✅ Added ${val} to whitelist.` }));
+          }
+        } else if (subCommand === "bulk") {
+          const addrs = val.split(",").map((a: string) => a.trim()).filter(Boolean);
+          let count = 0;
+          addrs.forEach((a: string) => {
+            if (!stored.includes(a)) {
+              stored.push(a);
+              count++;
+            }
+          });
+          await this.room.storage.put("storedMemberWallets", stored);
+          sender.send(JSON.stringify({ type: "system-message", text: `✅ Bulk added ${count} addresses.` }));
+        } else if (subCommand === "remove") {
+          stored = stored.filter((a: string) => a !== val);
+          await this.room.storage.put("storedMemberWallets", stored);
+          sender.send(JSON.stringify({ type: "system-message", text: `❌ Removed ${val} from whitelist.` }));
+        }
+        return;
+      }
+
+      // Rate Limit Check
       const text = (parsed.text || "")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .substring(0, 500);
-      if (!text.trim()) return;
+        .trim();
 
-      // Rate Limit Check
+      if (!text) return;
+
       const now = Date.now();
       const timestamps = this.rateLimits.get(sender.id) || [];
       // Filter out timestamps outside the window
@@ -309,8 +358,8 @@ export default class NekoChat implements Party.Server {
 
       const msgData = {
         msgType: "chat",
-        username: state.username,
-        color: state.color,
+        username,
+        color,
         text,
         timestamp: Date.now(),
       };
