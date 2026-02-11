@@ -94,33 +94,54 @@ const btnManualSubmit = document.getElementById('btn-manual-submit');
 const btnSkip = document.getElementById('btn-skip-wallet');
 const btnBack = document.getElementById('btn-back-wallet');
 
-// ═══ CHAT COLOR PICKER ═══
-const colorBtn = document.getElementById('color-btn');
-const chatColorInput = document.getElementById('chat-color-input');
-
 let currentWalletAddress = null;
-let myColor = null; // Track my current color
 
-// ... wallet flow ...
-
-chatColorInput.addEventListener('input', (e) => {
-    const color = e.target.value;
-    colorBtn.style.backgroundColor = color;
-    if (ws.readyState === WebSocket.OPEN && currentUsername) {
-        ws.send(JSON.stringify({ type: 'set-color', color }));
+// ═══ WALLET FLOW ═══
+btnPhantom.addEventListener('click', async () => {
+    if (window.solana && window.solana.isPhantom) {
+        try {
+            const resp = await window.solana.connect();
+            currentWalletAddress = resp.publicKey.toString();
+            goToStep2();
+        } catch (err) {
+            console.error(err);
+            alert('Connection failed or rejected');
+        }
+    } else {
+        alert('Phantom wallet not found! Please install it.');
+        window.open('https://phantom.app/', '_blank');
     }
 });
 
-chatColorInput.addEventListener('input', (e) => {
-    const color = e.target.value;
-    // Update button background
-    colorBtn.style.backgroundColor = color;
-
-    // Send to server
-    if (ws.readyState === WebSocket.OPEN && currentUsername) {
-        ws.send(JSON.stringify({ type: 'set-color', color }));
+function submitManualWallet() {
+    const val = manualInput.value.trim();
+    if (val) {
+        currentWalletAddress = val;
+        goToStep2();
     }
+}
+
+manualInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitManualWallet();
 });
+
+btnManualSubmit.addEventListener('click', submitManualWallet);
+
+btnSkip.addEventListener('click', () => {
+    currentWalletAddress = null;
+    goToStep2();
+});
+
+btnBack.addEventListener('click', () => {
+    loginForm.classList.add('hidden');
+    stepWallet.classList.remove('hidden');
+});
+
+function goToStep2() {
+    stepWallet.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    usernameInput.focus();
+}
 
 // ═══ LOGIN ═══
 loginForm.addEventListener('submit', (e) => {
@@ -128,9 +149,7 @@ loginForm.addEventListener('submit', (e) => {
     const name = usernameInput.value.trim();
     if (!name) return;
     currentUsername = name;
-
     if (ws.readyState === WebSocket.OPEN) {
-        // Don't send color here, let server decide/fetch
         ws.send(JSON.stringify({
             type: 'join',
             username: name,

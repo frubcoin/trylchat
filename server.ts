@@ -18,9 +18,6 @@ const HISTORY_ON_JOIN = 100;
 export default class NekoChat implements Party.Server {
   constructor(readonly room: Party.Room) { }
 
-  // Rate limits: conn.id -> number[] (timestamps)
-  rateLimits = new Map<string, number[]>();
-
   async onStart() {
     // Initialize visitor count if not set
     const count = await this.room.storage.get("realVisitorCount");
@@ -62,26 +59,8 @@ export default class NekoChat implements Party.Server {
 
       console.log(`[JOIN] User: ${username}, Wallet: ${wallet || "None"}`);
 
-      // ═══ COLOR PERSISTENCE ═══
-      let userColor = parsed.color;
-      const userColors = (await this.room.storage.get("userColors") as Record<string, string>) || {};
-
-      if (userColor) {
-        // User provided a color, save it
-        userColors[username] = userColor;
-        await this.room.storage.put("userColors", userColors);
-      } else if (userColors[username]) {
-        // User didn't provide color, but has one saved
-        userColor = userColors[username];
-      } else {
-        // No color provided or saved, generate random
-        userColor = getRandomColor();
-        // Save it so it sticks next time
-        userColors[username] = userColor;
-        await this.room.storage.put("userColors", userColors);
-      }
-
-      sender.setState({ username, color: userColor, wallet });
+      const color = getRandomColor();
+      sender.setState({ username, color, wallet });
 
       // Send chat history to joining user
       const history =
@@ -127,22 +106,6 @@ export default class NekoChat implements Party.Server {
     }
 
     if (parsed.type === "chat") {
-      // ═══ RATE LIMIT CHECK ═══
-      const now = Date.now();
-      const timestamps = this.rateLimits.get(sender.id) || [];
-      const recent = timestamps.filter(t => now - t < 10000); // 10s window
-
-      if (recent.length >= 5) {
-        sender.send(JSON.stringify({
-          type: "system-message",
-          text: "You're chatting too fast! 🐢"
-        }));
-        return;
-      }
-
-      recent.push(now);
-      this.rateLimits.set(sender.id, recent);
-
       const state = sender.state as any;
       if (!state?.username) return;
 
@@ -173,27 +136,6 @@ export default class NekoChat implements Party.Server {
         "chatHistory",
         history.slice(-MAX_HISTORY)
       );
-    }
-
-    if (parsed.type === "set-color") {
-      const state = sender.state as any;
-      if (!state?.username) return;
-
-      const newColor = parsed.color;
-      if (!newColor) return;
-
-      // Update state
-      sender.setState({ ...state, color: newColor });
-
-      // Persist
-      const userColors = (await this.room.storage.get("userColors") as Record<string, string>) || {};
-      userColors[state.username] = newColor;
-      await this.room.storage.put("userColors", userColors);
-
-      // Broadcast updated user list
-      await this.broadcastUserList();
-
-      // Announce change? No, too noisy. Just update list and future messages.
     }
 
     // Cursor position — relay to everyone else (no persistence)
@@ -240,7 +182,6 @@ export default class NekoChat implements Party.Server {
   }
 
   async onClose(conn: Party.Connection) {
-    this.rateLimits.delete(conn.id);
     const state = conn.state as any;
     if (state?.username) {
       // Broadcast leave message
