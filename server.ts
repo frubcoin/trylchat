@@ -304,58 +304,74 @@ export default class NekoChat implements Party.Server {
       if (!username) return;
 
       // Handle Admin Commands
-      if (isAdmin && parsed.text.startsWith("/whitelist")) {
-        const parts = parsed.text.split(" ");
-        const subCommand = parts[1]; // add, bulk, remove
+      if (isAdmin && parsed.text.startsWith("/")) {
+        const parts = parsed.text.trim().split(/\s+/);
+        const command = parts[0].toLowerCase();
+        const subCommand = parts[1]; // for /whitelist subcommands
         const val = parts.slice(2).join(" ");
+        const fullArg = parts.slice(1).join(" "); // for /pin etc
 
-        let stored = await this.getStoredMemberWallets();
-
-        if (subCommand === "add") {
-          if (!stored.includes(val)) {
-            stored.push(val);
-            await this.room.storage.put("storedMemberWallets", stored);
-            sender.send(JSON.stringify({ type: "system-message", text: `✅ Added ${val} to whitelist.` }));
-          }
-        } else if (subCommand === "bulk") {
-          const addrs = val.split(",").map((a: string) => a.trim()).filter(Boolean);
-          let count = 0;
-          addrs.forEach((a: string) => {
-            if (!stored.includes(a)) {
-              stored.push(a);
-              count++;
+        if (command === "/whitelist") {
+          let stored = await this.getStoredMemberWallets();
+          if (subCommand === "add") {
+            if (!stored.includes(val)) {
+              stored.push(val);
+              await this.room.storage.put("storedMemberWallets", stored);
+              sender.send(JSON.stringify({ type: "system-message", text: `✅ Added ${val} to whitelist.` }));
             }
-          });
-          await this.room.storage.put("storedMemberWallets", stored);
-          sender.send(JSON.stringify({ type: "system-message", text: `✅ Bulk added ${count} addresses.` }));
-        } else if (subCommand === "remove") {
-          stored = stored.filter((a: string) => a !== val);
-          await this.room.storage.put("storedMemberWallets", stored);
-          sender.send(JSON.stringify({ type: "system-message", text: `❌ Removed ${val} from whitelist.` }));
-        } else if (subCommand === "mute") {
-          if (this.mutedUsers.has(val)) {
-            this.mutedUsers.delete(val);
-            sender.send(JSON.stringify({ type: "system-message", text: `🔊 Unmuted ${val}.` }));
-          } else {
-            this.mutedUsers.add(val);
-            sender.send(JSON.stringify({ type: "system-message", text: `🔇 Muted ${val}.` }));
+          } else if (subCommand === "bulk") {
+            const addrs = val.split(",").map((a: string) => a.trim()).filter(Boolean);
+            let count = 0;
+            addrs.forEach((a: string) => {
+              if (!stored.includes(a)) {
+                stored.push(a);
+                count++;
+              }
+            });
+            await this.room.storage.put("storedMemberWallets", stored);
+            sender.send(JSON.stringify({ type: "system-message", text: `✅ Bulk added ${count} addresses.` }));
+          } else if (subCommand === "remove") {
+            stored = stored.filter((a: string) => a !== val);
+            await this.room.storage.put("storedMemberWallets", stored);
+            sender.send(JSON.stringify({ type: "system-message", text: `❌ Removed ${val} from whitelist.` }));
           }
-        } else if (subCommand === "clear") {
+          return;
+        }
+
+        if (command === "/mute") {
+          const target = parts[1];
+          if (this.mutedUsers.has(target)) {
+            this.mutedUsers.delete(target);
+            sender.send(JSON.stringify({ type: "system-message", text: `🔊 Unmuted ${target}.` }));
+          } else {
+            this.mutedUsers.add(target);
+            sender.send(JSON.stringify({ type: "system-message", text: `🔇 Muted ${target}.` }));
+          }
+          return;
+        }
+
+        if (command === "/clear") {
           await this.room.storage.delete("chatHistory");
           this.room.broadcast(JSON.stringify({ type: "clear-chat" }));
           sender.send(JSON.stringify({ type: "system-message", text: "🧼 Chat history cleared." }));
-        } else if (subCommand === "pin") {
-          this.pinnedMessage = val;
-          await this.room.storage.put("pinnedMessage", val);
-          this.room.broadcast(JSON.stringify({ type: "pinned-update", text: val }));
+          return;
+        }
+
+        if (command === "/pin") {
+          this.pinnedMessage = fullArg;
+          await this.room.storage.put("pinnedMessage", fullArg);
+          this.room.broadcast(JSON.stringify({ type: "pinned-update", text: fullArg }));
           sender.send(JSON.stringify({ type: "system-message", text: "📌 Message pinned." }));
-        } else if (subCommand === "unpin") {
+          return;
+        }
+
+        if (command === "/unpin") {
           this.pinnedMessage = null;
           await this.room.storage.delete("pinnedMessage");
           this.room.broadcast(JSON.stringify({ type: "pinned-update", text: null }));
           sender.send(JSON.stringify({ type: "system-message", text: "📍 Message unpinned." }));
+          return;
         }
-        return;
       }
 
       // Check if muted

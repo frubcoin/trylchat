@@ -127,7 +127,8 @@ const DOM = {
     chatInput: document.getElementById('chat-input'),
     chatMessages: document.getElementById('chat-messages'),
     userList: document.getElementById('user-list'),
-    visitorNum: document.getElementById('visitor-num'),
+    onlineCount: document.getElementById('online-count'),
+    guestCount: document.getElementById('guest-count'),
     counterValue: document.getElementById('counter-value'),
     loginBox: document.getElementById('login-box'),
     stepWallet: document.getElementById('step-wallet'),
@@ -334,6 +335,13 @@ function appendSystemMessage(data) {
 
 function updateUserList(users, total) {
     DOM.userList.innerHTML = '';
+
+    const uCount = users ? users.length : 0;
+    const tCount = total || uCount;
+    const gCount = Math.max(0, tCount - uCount);
+
+    if (DOM.onlineCount) DOM.onlineCount.textContent = uCount;
+    if (DOM.guestCount) DOM.guestCount.textContent = gCount;
 
     if (!users || users.length === 0) {
         DOM.userList.innerHTML = '<li class="no-users">no one here yet</li>';

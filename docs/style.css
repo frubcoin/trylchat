@@ -375,8 +375,7 @@ body {
 
 .header-left {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
 }
 
 .header-wordmark {
@@ -388,14 +387,45 @@ body {
   line-height: 1;
 }
 
-.header-visitor-badge {
-  font-size: 14px;
-  color: var(--text-muted);
-  opacity: 0.8;
+.header-right {
+  display: flex;
+  align-items: center;
 }
 
-.header-visitor-badge::before {
-  content: '· ';
+.header-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.online-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+.header-separator {
+  opacity: 0.5;
+  margin: 0 4px;
+}
+
+@keyframes dotPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
 }
 
 @keyframes pulse {
