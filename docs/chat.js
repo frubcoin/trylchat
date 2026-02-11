@@ -238,15 +238,24 @@ function renderRoomList() {
             li.title = 'Hold the required token to access';
         }
 
-        li.addEventListener('click', () => {
-            if (isLocked) {
-                appendSystemMessage({ text: '🔒 You need to hold the token to access this room.' });
-                scrollToBottom();
-                return;
+        li.addEventListener('click', async () => {
+            if (room.id === currentRoom) return;
+
+            if (room.gated) {
+                // Always re-check token balance before entering gated room
+                li.classList.add('locked');
+                li.querySelector('.room-icon').textContent = '⏳';
+                const holds = await checkTokenBalance(currentWalletAddress);
+                hasToken = holds;
+                renderRoomList();
+                if (!holds) {
+                    appendSystemMessage({ text: '🔒 You need to hold the token to access this room.' });
+                    scrollToBottom();
+                    return;
+                }
             }
-            if (room.id !== currentRoom) {
-                switchRoom(room.id);
-            }
+
+            switchRoom(room.id);
         });
 
         DOM.roomList.appendChild(li);
