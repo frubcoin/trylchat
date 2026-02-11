@@ -272,6 +272,12 @@ body {
   min-width: 0;
 }
 
+/* current chat-messages style at 275 is flex column. We want children to be centered or the container to be centered? 
+   Better to make the container full width but children constrained? 
+   No, let's constrain the content wrapper if possible, or just the messages. 
+   Actually, `align-items: center` in column flexbox centers the children horizontally. 
+   Then children need a width. */
+
 #chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -279,6 +285,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Constrain messages width */
+.chat-msg,
+.system-msg {
+  width: 100%;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Messages */
@@ -337,12 +352,18 @@ body {
   border-top: 1px solid var(--border);
   background: var(--bg);
   padding: 16px 24px;
+  display: flex;
+  justify-content: center;
+  /* Center the input container */
 }
 
 #chat-input-area {
   display: flex;
   gap: 8px;
   align-items: center;
+  width: 100%;
+  max-width: 900px;
+  /* Match message width */
 }
 
 #chat-input {
