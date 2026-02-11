@@ -186,22 +186,33 @@ const COMMANDS = [
 
 // ═══ WALLET FLOW ═══
 DOM.btnPhantom.addEventListener('click', async () => {
+    console.log('Phantom button clicked');
     if (window.solana && window.solana.isPhantom) {
         try {
+            console.log('Connecting to Phantom...');
             const resp = await window.solana.connect();
             const wallet = resp.publicKey.toString();
+            console.log('Connected wallet:', wallet);
 
             // Immediately request signature
+            console.log('Requesting signature for:', SIGN_MESSAGE);
             const encodedMessage = new TextEncoder().encode(SIGN_MESSAGE);
             const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
+            console.log('Signature received');
 
             currentWalletAddress = wallet;
-            currentSignature = bs58.encode(signedMessage.signature);
+
+            // bs58 handling
+            const encoder = window.bs58 || bs58;
+            if (!encoder) throw new Error('bs58 library not found');
+
+            currentSignature = encoder.encode(signedMessage.signature);
+            console.log('Signature encoded:', currentSignature);
 
             goToStep2();
         } catch (err) {
-            console.error(err);
-            alert('Connection or Signature failed/rejected');
+            console.error('Phantom Error:', err);
+            alert(`Connection or Signature failed/rejected: ${err.message || err}`);
         }
     } else {
         alert('Phantom wallet not found! Please install it.');
