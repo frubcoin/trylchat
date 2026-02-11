@@ -1,8 +1,5 @@
 {
     "name": "nekochat",
     "main": "server.ts",
-    "compatibilityDate": "2024-01-01",
-    "vars": {
-        "ADMIN_WALLETS": "9EAU86AXo67dE3MHZfGd2bx7G45CJDDVUDJ1n78S8Ecn"
-    }
+    "compatibilityDate": "2024-01-01"
 }

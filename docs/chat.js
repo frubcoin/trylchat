@@ -59,6 +59,14 @@ function connectWebSocket() {
             case 'cursor-gone':
                 removeRemoteCursor(data.id);
                 break;
+            case 'join-error':
+                alert(data.reason || 'Join failed');
+                // Go back to wallet step
+                DOM.loginForm.classList.add('hidden');
+                DOM.stepWallet.classList.remove('hidden');
+                DOM.loginOverlay.classList.remove('hidden');
+                DOM.chatPage.classList.add('hidden');
+                break;
             // ═══ GAME EVENTS ═══
             case 'game-ready':
                 if (currentUsername) showGameOverlay('ready', data);

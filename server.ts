@@ -26,6 +26,17 @@ export default class NekoChat implements Party.Server {
     const adminWallets = (this.room.env.ADMIN_WALLETS as string) || "";
     return adminWallets.split(",").map(w => w.trim()).filter(Boolean);
   }
+
+  private getMemberWallets(): string[] {
+    const memberWallets = (this.room.env.MEMBER_WALLETS as string) || "";
+    return memberWallets.split(",").map(w => w.trim()).filter(Boolean);
+  }
+
+  private isWhitelisted(wallet: string): boolean {
+    const admins = this.getAdminWallets();
+    const members = this.getMemberWallets();
+    return admins.includes(wallet) || members.includes(wallet);
+  }
   // Track message timestamps for rate limiting
   rateLimits = new Map<string, number[]>();
 
@@ -79,10 +90,19 @@ export default class NekoChat implements Party.Server {
 
       if (!username) return;
 
-      console.log(`[JOIN] User: ${username}, Wallet: ${wallet || "None"}`);
+      // Whitelist Check
+      if (!wallet || !this.isWhitelisted(wallet)) {
+        sender.send(JSON.stringify({
+          type: "join-error",
+          reason: "Unauthorized. Your wallet is not on the whitelist."
+        }));
+        return;
+      }
+
+      console.log(`[JOIN] User: ${username}, Wallet: ${wallet}`);
 
       const color = getRandomColor();
-      const isAdmin = wallet && this.getAdminWallets().includes(wallet);
+      const isAdmin = this.getAdminWallets().includes(wallet);
       sender.setState({ username, color, wallet, isAdmin });
 
       if (isAdmin) {
