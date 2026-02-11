@@ -1,8 +1,8 @@
-/* ═══════════════════════════════════════
-   ★ NekoChat 2000 — Client Script ★
-   ═══════════════════════════════════════ */
+/* ═══════════════════════════════════
+   tryl.chat — Client Script
+   ═══════════════════════════════════ */
 
-// ═══ PARTYKIT CONNECTION (native WebSocket) ═══
+// ═══ CONNECTION ═══
 const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const PARTYKIT_HOST = isLocal ? "localhost:1999" : "nekochat.frubcoin.partykit.dev";
 const WS_PROTOCOL = isLocal ? "ws" : "wss";
@@ -15,8 +15,7 @@ function connectWebSocket() {
     ws = new WebSocket(WS_URL);
 
     ws.addEventListener('open', () => {
-        console.log('✦ Connected to tryl.chat ✦');
-        // Re-join if we had a username (reconnection)
+        console.log('connected to tryl.chat');
         if (currentUsername) {
             ws.send(JSON.stringify({ type: 'join', username: currentUsername }));
         }
@@ -24,11 +23,7 @@ function connectWebSocket() {
 
     ws.addEventListener('message', (event) => {
         let data;
-        try {
-            data = JSON.parse(event.data);
-        } catch {
-            return;
-        }
+        try { data = JSON.parse(event.data); } catch { return; }
 
         switch (data.type) {
             case 'chat-message':
@@ -48,11 +43,8 @@ function connectWebSocket() {
             case 'history':
                 if (data.messages && Array.isArray(data.messages)) {
                     data.messages.forEach(msg => {
-                        if (msg.msgType === 'chat') {
-                            appendChatMessage(msg);
-                        } else if (msg.msgType === 'system') {
-                            appendSystemMessage(msg);
-                        }
+                        if (msg.msgType === 'chat') appendChatMessage(msg);
+                        else if (msg.msgType === 'system') appendSystemMessage(msg);
                     });
                     scrollToBottom();
                 }
@@ -67,27 +59,18 @@ function connectWebSocket() {
     });
 
     ws.addEventListener('close', () => {
-        appendSystemMessage({
-            text: '⚠ Connection lost... Reconnecting... ⚠',
-            timestamp: Date.now()
-        });
-        // Auto-reconnect after 2 seconds
+        appendSystemMessage({ text: 'connection lost — reconnecting...', timestamp: Date.now() });
         if (!reconnectTimer) {
-            reconnectTimer = setTimeout(() => {
-                reconnectTimer = null;
-                connectWebSocket();
-            }, 2000);
+            reconnectTimer = setTimeout(() => { reconnectTimer = null; connectWebSocket(); }, 2000);
         }
     });
 
-    ws.addEventListener('error', () => {
-        // Will trigger close event, which handles reconnection
-    });
+    ws.addEventListener('error', () => { });
 }
 
 connectWebSocket();
 
-// ═══ DOM ELEMENTS ═══
+// ═══ DOM ═══
 const loginOverlay = document.getElementById('login-overlay');
 const loginForm = document.getElementById('login-form');
 const usernameInput = document.getElementById('username-input');
@@ -98,6 +81,7 @@ const chatMessages = document.getElementById('chat-messages');
 const userListEl = document.getElementById('user-list');
 const visitorNum = document.getElementById('visitor-num');
 const counterValue = document.getElementById('counter-value');
+const onlineCount = document.getElementById('online-count');
 
 let currentUsername = '';
 
@@ -106,23 +90,20 @@ loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = usernameInput.value.trim();
     if (!name) return;
-
     currentUsername = name;
     if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'join', username: name }));
     }
-
     loginOverlay.classList.add('hidden');
     chatPage.classList.remove('hidden');
     chatInput.focus();
 });
 
-// ═══ SEND MESSAGE ═══
+// ═══ SEND ═══
 chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const msg = chatInput.value.trim();
     if (!msg) return;
-
     if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'chat', text: msg }));
     }
@@ -130,9 +111,9 @@ chatForm.addEventListener('submit', (e) => {
     chatInput.focus();
 });
 
-// ═══ RENDER FUNCTIONS ═══
-function formatTime(timestamp) {
-    const d = new Date(timestamp);
+// ═══ RENDER ═══
+function formatTime(ts) {
+    const d = new Date(ts);
     let h = d.getHours();
     const m = String(d.getMinutes()).padStart(2, '0');
     const ampm = h >= 12 ? 'PM' : 'AM';
@@ -142,16 +123,14 @@ function formatTime(timestamp) {
 
 function appendChatMessage(data) {
     const div = document.createElement('div');
-    div.className = 'chat-msg msg-flash';
-    div.style.borderLeftColor = data.color;
+    div.className = 'chat-msg';
 
     div.innerHTML = `
     <div class="msg-header">
-      <span class="msg-username" style="color: ${data.color}">&lt;${data.username}&gt;</span>
+      <span class="msg-username" style="color: ${data.color}">${data.username}</span>
       <span class="msg-time">${formatTime(data.timestamp)}</span>
     </div>
-    <div class="msg-text">${data.text}</div>
-  `;
+    <div class="msg-text">${data.text}</div>`;
 
     chatMessages.appendChild(div);
 }
@@ -165,8 +144,9 @@ function appendSystemMessage(data) {
 
 function updateUserList(users) {
     userListEl.innerHTML = '';
+    if (onlineCount) onlineCount.textContent = users ? users.length : 0;
     if (!users || users.length === 0) {
-        userListEl.innerHTML = '<li class="no-users">No one here yet...</li>';
+        userListEl.innerHTML = '<li class="no-users">no one here yet</li>';
         return;
     }
     users.forEach(u => {
@@ -178,41 +158,38 @@ function updateUserList(users) {
 }
 
 function updateVisitorCount(count) {
-    const padded = String(count).padStart(6, '0');
-    if (visitorNum) visitorNum.textContent = count;
-    if (counterValue) counterValue.textContent = padded;
+    if (visitorNum) visitorNum.textContent = count.toLocaleString();
+    if (counterValue) counterValue.textContent = count.toLocaleString();
 }
 
 function scrollToBottom() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// ═══ CURSOR TRAIL EFFECT ═══
-const trailSymbols = ['✦', '✧', '★', '☆', '·', '✶', '✴', '✸'];
+// ═══ CURSOR TRAIL ═══
 let trailThrottle = 0;
 let cursorSendThrottle = 0;
 
 document.addEventListener('mousemove', (e) => {
     const now = Date.now();
 
-    // Sparkle trail (every 60ms)
-    if (now - trailThrottle >= 60) {
+    // Subtle dot trail (every 80ms)
+    if (now - trailThrottle >= 80) {
         trailThrottle = now;
-        const star = document.createElement('span');
-        star.className = 'trail-star';
-        star.textContent = trailSymbols[Math.floor(Math.random() * trailSymbols.length)];
-        star.style.left = e.clientX + 'px';
-        star.style.top = e.clientY + 'px';
-        star.style.color = `hsl(${Math.random() * 360}, 100%, 70%)`;
-        document.body.appendChild(star);
-        setTimeout(() => star.remove(), 800);
+        const dot = document.createElement('span');
+        dot.className = 'trail-star';
+        dot.textContent = '·';
+        dot.style.left = e.clientX + 'px';
+        dot.style.top = e.clientY + 'px';
+        dot.style.color = '#444';
+        document.body.appendChild(dot);
+        setTimeout(() => dot.remove(), 600);
     }
 
-    // Send cursor position to others (every 50ms)
+    // Send cursor to others (every 50ms)
     if (currentUsername && now - cursorSendThrottle >= 50) {
         cursorSendThrottle = now;
         if (ws.readyState === WebSocket.OPEN) {
-            // Send as % of viewport so it works across different screen sizes
             ws.send(JSON.stringify({
                 type: 'cursor',
                 x: (e.clientX / window.innerWidth) * 100,
@@ -223,31 +200,28 @@ document.addEventListener('mousemove', (e) => {
 });
 
 // ═══ REMOTE CURSORS ═══
-const remoteCursors = {}; // id -> { element, timeout }
+const remoteCursors = {};
 
 function updateRemoteCursor(data) {
     let cursor = remoteCursors[data.id];
 
     if (!cursor) {
-        // Create cursor element
         const el = document.createElement('div');
         el.className = 'remote-cursor';
         el.innerHTML = `
-            <span class="remote-cursor-dot" style="background: ${data.color}; box-shadow: 0 0 8px ${data.color}, 0 0 16px ${data.color};"></span>
-            <span class="remote-cursor-label" style="color: ${data.color}; text-shadow: 0 0 6px ${data.color};">${data.username}</span>
+            <span class="remote-cursor-dot" style="background: ${data.color};"></span>
+            <span class="remote-cursor-label" style="color: ${data.color};">${data.username}</span>
         `;
         document.body.appendChild(el);
         cursor = { el, timeout: null };
         remoteCursors[data.id] = cursor;
     }
 
-    // Position at % of viewport
     const x = (data.x / 100) * window.innerWidth;
     const y = (data.y / 100) * window.innerHeight;
     cursor.el.style.left = x + 'px';
     cursor.el.style.top = y + 'px';
 
-    // Reset stale timer — remove if no update for 5s
     if (cursor.timeout) clearTimeout(cursor.timeout);
     cursor.timeout = setTimeout(() => removeRemoteCursor(data.id), 30000);
 }
@@ -260,10 +234,3 @@ function removeRemoteCursor(id) {
         delete remoteCursors[id];
     }
 }
-
-// ═══ KEYBOARD SHORTCUT ═══
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && document.activeElement !== chatInput && !loginOverlay.classList.contains('hidden') === false) {
-        chatInput.focus();
-    }
-});
