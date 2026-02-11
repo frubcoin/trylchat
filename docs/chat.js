@@ -115,7 +115,7 @@ function connectWebSocket() {
     ws.addEventListener('error', () => { });
 }
 
-connectWebSocket();
+// connectWebSocket(); initialized at bottom of file
 
 // ═══ DOM ═══
 const DOM = {

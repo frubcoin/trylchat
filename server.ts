@@ -89,6 +89,9 @@ export default class NekoChat implements Party.Server {
     if (this.pinnedMessage) {
       conn.send(JSON.stringify({ type: "pinned-update", text: this.pinnedMessage }));
     }
+
+    // Broadcast updated user list for guest count tracking
+    await this.broadcastUserList();
   }
 
   async onMessage(message: string, sender: Party.Connection) {
