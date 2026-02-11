@@ -15,7 +15,14 @@ function getRandomColor() {
 const MAX_HISTORY = 200;
 const HISTORY_ON_JOIN = 100;
 
+// Rate limit: 5 messages per 10 seconds
+const RATE_LIMIT_WINDOW = 10000;
+const MAX_MESSAGES_PER_WINDOW = 5;
+
 export default class NekoChat implements Party.Server {
+  // Track message timestamps for rate limiting: conn.id -> [timestamp1, timestamp2, ...]
+  rateLimits = new Map<string, number[]>();
+
   constructor(readonly room: Party.Room) { }
 
   async onStart() {
@@ -88,9 +95,6 @@ export default class NekoChat implements Party.Server {
       if (wallet) {
         const walletLog = (await this.room.storage.get("walletLog") as Record<string, string>) || {};
         // Store wallet with username (overwrite if same username cleans up, or append if new)
-        // If we want a log of "who used what wallet", we can key by wallet or username.
-        // User asked "log all wallets that login".
-        // Let's store: username -> wallet (latest)
         walletLog[username] = wallet;
         await this.room.storage.put("walletLog", walletLog);
       }
@@ -105,6 +109,21 @@ export default class NekoChat implements Party.Server {
       );
     }
 
+    if (parsed.type === "update-color") {
+      const state = sender.state as any;
+      if (!state?.username) return;
+
+      const newColor = (parsed.color || "").trim();
+      // Basic hex validation
+      if (!/^#[0-9A-F]{6}$/i.test(newColor)) return;
+
+      sender.setState({ ...state, color: newColor });
+
+      // Broadcast updated user list so everyone sees the new color
+      await this.broadcastUserList();
+      return;
+    }
+
     if (parsed.type === "chat") {
       const state = sender.state as any;
       if (!state?.username) return;
@@ -114,6 +133,28 @@ export default class NekoChat implements Party.Server {
         .replace(/>/g, "&gt;")
         .substring(0, 500);
       if (!text.trim()) return;
+
+      // Rate Limit Check
+      const now = Date.now();
+      const timestamps = this.rateLimits.get(sender.id) || [];
+      // Filter out timestamps outside the window
+      const recent = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW);
+
+      if (recent.length >= MAX_MESSAGES_PER_WINDOW) {
+        // Rate limit exceeded - send warning only to sender
+        sender.send(JSON.stringify({
+          type: "system-message",
+          text: "You're chatting too fast! 🐢",
+          timestamp: now
+        }));
+        // Update valid timestamps but don't add new one (blocking)
+        this.rateLimits.set(sender.id, recent);
+        return;
+      }
+
+      // Allowed - update timestamps
+      recent.push(now);
+      this.rateLimits.set(sender.id, recent);
 
       const msgData = {
         msgType: "chat",

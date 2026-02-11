@@ -161,6 +161,18 @@ loginForm.addEventListener('submit', (e) => {
     chatInput.focus();
 });
 
+// ═══ COLOR PICKER ═══
+const colorPicker = document.getElementById('color-picker');
+
+colorPicker.addEventListener('change', (e) => {
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'update-color',
+            color: e.target.value
+        }));
+    }
+});
+
 // ═══ SEND ═══
 chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -187,12 +199,16 @@ function appendChatMessage(data) {
     const div = document.createElement('div');
     div.className = 'chat-msg';
 
+    // Update: Use the color from the message data
     div.innerHTML = `
     <div class="msg-header">
       <span class="msg-username" style="color: ${data.color}">${data.username}</span>
       <span class="msg-time">${formatTime(data.timestamp)}</span>
     </div>
-    <div class="msg-text">${data.text}</div>`;
+    <div class="msg-text"></div>`;
+
+    // Secure text insertion
+    div.querySelector('.msg-text').innerText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
     chatMessages.appendChild(div);
 }
