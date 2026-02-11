@@ -322,6 +322,10 @@ function updateRemoteCursor(data) {
         remoteCursors[data.id] = cursor;
     }
 
+    // Update color (in case user changed it via color picker)
+    cursor.el.querySelector('.remote-cursor-dot').style.background = data.color;
+    cursor.el.querySelector('.remote-cursor-label').style.color = data.color;
+
     const x = (data.x / 100) * window.innerWidth;
     const y = (data.y / 100) * window.innerHeight;
     cursor.el.style.left = x + 'px';
