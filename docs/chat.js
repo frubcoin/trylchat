@@ -35,7 +35,7 @@ function connectWebSocket() {
                 scrollToBottom();
                 break;
             case 'user-list':
-                updateUserList(data.users);
+                updateUserList(data.users, data.total);
                 break;
             case 'visitor-count':
                 updateVisitorCount(data.count);
@@ -142,9 +142,17 @@ function appendSystemMessage(data) {
     chatMessages.appendChild(div);
 }
 
-function updateUserList(users) {
+function updateUserList(users, total) {
     userListEl.innerHTML = '';
-    if (onlineCount) onlineCount.textContent = users ? users.length : 0;
+
+    const uCount = users ? users.length : 0;
+    const tCount = total || uCount;
+    const gCount = Math.max(0, tCount - uCount);
+
+    if (onlineCount) {
+        onlineCount.textContent = `${uCount} ${uCount === 1 ? 'user' : 'users'}, ${gCount} ${gCount === 1 ? 'guest' : 'guests'}`;
+    }
+
     if (!users || users.length === 0) {
         userListEl.innerHTML = '<li class="no-users">no one here yet</li>';
         return;
