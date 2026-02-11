@@ -99,7 +99,7 @@ export default class NekoChat implements Party.Server {
         return;
       }
 
-      console.log(`[JOIN] User: ${username}, Wallet: ${wallet}`);
+      console.log(`[JOIN] User: ${username}`);
 
       const color = getRandomColor();
       const isAdmin = this.getAdminWallets().includes(wallet);
