@@ -332,8 +332,12 @@ const gameMessage = document.getElementById('game-message');
 // Admin Trigger (only works if element exists/visible)
 if (btnAdminGame) {
     btnAdminGame.addEventListener('click', () => {
+        console.log('Admin button clicked');
         if (ws.readyState === WebSocket.OPEN) {
+            console.log('Sending admin-start-game command');
             ws.send(JSON.stringify({ type: 'admin-start-game' }));
+        } else {
+            console.error('WebSocket not open');
         }
     });
 }
