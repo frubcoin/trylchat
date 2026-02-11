@@ -113,7 +113,6 @@ const DOM = {
     userList: document.getElementById('user-list'),
     visitorNum: document.getElementById('visitor-num'),
     counterValue: document.getElementById('counter-value'),
-    onlineCount: document.getElementById('online-count'),
     loginBox: document.getElementById('login-box'),
     stepWallet: document.getElementById('step-wallet'),
     btnPhantom: document.getElementById('btn-phantom'),
@@ -263,14 +262,6 @@ function appendSystemMessage(data) {
 
 function updateUserList(users, total) {
     DOM.userList.innerHTML = '';
-
-    const uCount = users ? users.length : 0;
-    const tCount = total || uCount;
-    const gCount = Math.max(0, tCount - uCount);
-
-    if (DOM.onlineCount) {
-        DOM.onlineCount.textContent = `${uCount} ${uCount === 1 ? 'user' : 'users'}, ${gCount} ${gCount === 1 ? 'guest' : 'guests'}`;
-    }
 
     if (!users || users.length === 0) {
         DOM.userList.innerHTML = '<li class="no-users">no one here yet</li>';
