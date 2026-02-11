@@ -320,3 +320,58 @@ function removeRemoteCursor(id) {
         delete remoteCursors[id];
     }
 }
+
+// ═══ GAME & ADMIN UI ═══
+const btnAdminGame = document.getElementById('btn-admin-game');
+const gameOverlay = document.getElementById('game-overlay');
+const gameMessage = document.getElementById('game-message');
+
+// Admin Trigger (only works if element exists/visible)
+if (btnAdminGame) {
+    btnAdminGame.addEventListener('click', () => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'admin-start-game' }));
+        }
+    });
+}
+
+// Game Click
+if (gameOverlay) {
+    gameOverlay.addEventListener('mousedown', () => {
+        // Simple state check (server handles DQ too)
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'game-click' }));
+        }
+    });
+}
+
+function showGameOverlay(state, data) {
+    gameOverlay.classList.remove('hidden', 'state-ready', 'state-go', 'state-dq');
+    gameMessage.style.color = '';
+
+    if (state === 'ready') {
+        gameOverlay.classList.add('state-ready');
+        gameMessage.textContent = "WAIT FOR IT...";
+    } else if (state === 'go') {
+        gameOverlay.classList.add('state-go');
+        gameMessage.textContent = "CLICK!";
+    } else if (state === 'dq') {
+        gameOverlay.classList.add('state-dq');
+        gameMessage.textContent = "FALSE START ❌";
+        setTimeout(() => {
+            // Only hide if we are still in DQ state (game might have ended)
+            if (gameOverlay.classList.contains('state-dq')) {
+                gameOverlay.classList.remove('state-dq');
+                gameOverlay.classList.add('hidden');
+            }
+        }, 2000);
+    } else if (state === 'win') {
+        gameOverlay.classList.remove('state-go');
+        gameOverlay.style.background = '#000';
+        gameMessage.innerHTML = `<div style="font-size: 40px; color: #fff;">WINNER</div><div style="color: ${data.color || '#fff'}">${data.username}</div><div style="font-size: 30px; color: #888;">${data.time}ms</div>`;
+        setTimeout(() => {
+            gameOverlay.classList.add('hidden');
+            gameOverlay.style.background = '';
+        }, 5000);
+    }
+}

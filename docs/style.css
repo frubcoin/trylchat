@@ -616,7 +616,57 @@ body {
     padding: 12px 16px;
   }
 
-  .header-wordmark {
-    font-size: 26px;
+  /* ═══ ADMIN ═══ */
+  #btn-admin-game {
+    margin-top: auto;
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 12px;
+    transition: all 0.2s;
+    width: 100%;
   }
-}
+
+  #btn-admin-game:hover {
+    border-color: #ff3333;
+    color: #ff3333;
+  }
+
+  /* ═══ GAME OVERLAY ═══ */
+  #game-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-wordmark);
+    font-size: 120px;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+    text-align: center;
+    line-height: 1;
+  }
+
+  /* STATE: READY (RED) */
+  #game-overlay.state-ready {
+    background: #ff3333;
+  }
+
+  /* STATE: GO (GREEN) */
+  #game-overlay.state-go {
+    background: #33ff33;
+    color: #000;
+  }
+
+  /* STATE: DQ (GRAY/RED) */
+  #game-overlay.state-dq {
+    background: #333;
+    color: #ff3333;
+    font-size: 80px;
+  }

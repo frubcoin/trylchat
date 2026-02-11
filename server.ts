@@ -19,9 +19,22 @@ const HISTORY_ON_JOIN = 100;
 const RATE_LIMIT_WINDOW = 10000;
 const MAX_MESSAGES_PER_WINDOW = 5;
 
+// Admin Whitelist
+const ADMIN_WALLETS = [
+  "9EAU86AXo67dE3MHZfGd2bx7G45CJDDVUDJ1n78S8Ecn"
+];
+
+type GameState = "IDLE" | "READY" | "GO";
+
 export default class NekoChat implements Party.Server {
-  // Track message timestamps for rate limiting: conn.id -> [timestamp1, timestamp2, ...]
+  // Track message timestamps for rate limiting
   rateLimits = new Map<string, number[]>();
+
+  // Game State
+  gameState: GameState = "IDLE";
+  gameStartTime: number = 0;
+  dqUsers = new Set<string>();
+  gameTimer: NodeJS.Timeout | null = null;
 
   constructor(readonly room: Party.Room) { }
 
@@ -67,7 +80,8 @@ export default class NekoChat implements Party.Server {
       console.log(`[JOIN] User: ${username}, Wallet: ${wallet || "None"}`);
 
       const color = getRandomColor();
-      sender.setState({ username, color, wallet });
+      const isAdmin = wallet && ADMIN_WALLETS.includes(wallet);
+      sender.setState({ username, color, wallet, isAdmin });
 
       // Send chat history to joining user
       const history =
@@ -94,7 +108,7 @@ export default class NekoChat implements Party.Server {
       // Log wallet if present
       if (wallet) {
         const walletLog = (await this.room.storage.get("walletLog") as Record<string, string>) || {};
-        // Store wallet with username (overwrite if same username cleans up, or append if new)
+        // Store wallet with username
         walletLog[username] = wallet;
         await this.room.storage.put("walletLog", walletLog);
       }
@@ -107,6 +121,69 @@ export default class NekoChat implements Party.Server {
       this.room.broadcast(
         JSON.stringify({ type: "visitor-count", count: visitorCount })
       );
+    }
+
+    // ═══ GAME: START (Admin Only) ═══
+    if (parsed.type === "admin-start-game") {
+      const state = sender.state as any;
+      if (!state?.isAdmin) return; // Ignore if not admin
+
+      // Reset Game State
+      this.gameState = "READY";
+      this.dqUsers.clear();
+      this.room.broadcast(JSON.stringify({ type: "game-ready" }));
+
+      // Random delay 2000 - 10000 ms
+      const delay = Math.floor(Math.random() * 8000) + 2000;
+
+      if (this.gameTimer) clearTimeout(this.gameTimer);
+      this.gameTimer = setTimeout(() => {
+        this.gameState = "GO";
+        this.gameStartTime = Date.now();
+        this.room.broadcast(JSON.stringify({ type: "game-go" }));
+      }, delay);
+    }
+
+    // ═══ GAME: CLICK ═══
+    if (parsed.type === "game-click") {
+      const state = sender.state as any;
+      if (!state?.username) return;
+
+      // False Start
+      if (this.gameState === "READY") {
+        this.dqUsers.add(sender.id);
+        sender.send(JSON.stringify({ type: "game-dq" }));
+        return;
+      }
+
+      // Valid Click
+      if (this.gameState === "GO") {
+        if (this.dqUsers.has(sender.id)) return; // Disqualified users ignored
+
+        // WINNER!
+        const reactionTime = Date.now() - this.gameStartTime;
+        this.gameState = "IDLE"; // End game
+
+        const winMsg = {
+          type: "game-win",
+          username: state.username,
+          time: reactionTime
+        };
+        this.room.broadcast(JSON.stringify(winMsg));
+
+        // Announce in chat
+        const sysMsg = {
+          msgType: "system",
+          text: `🏆 ${state.username} won in ${reactionTime}ms!`,
+          timestamp: Date.now()
+        };
+        this.room.broadcast(JSON.stringify({ type: "system-message", ...sysMsg }));
+
+        // Save to history
+        const history = ((await this.room.storage.get("chatHistory")) as any[]) || [];
+        history.push(sysMsg);
+        await this.room.storage.put("chatHistory", history.slice(-MAX_HISTORY));
+      }
     }
 
     if (parsed.type === "update-color") {
