@@ -1,14 +1,14 @@
 {
-  "name": "retro-chat",
+  "name": "nekochat",
   "version": "1.0.0",
-  "description": "A retro Nekoweb/Geocities themed chat site",
+  "description": "A retro Nekoweb/Geocities themed chat site — powered by PartyKit",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "partykit dev",
+    "deploy": "partykit deploy"
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.4"
+  "devDependencies": {
+    "partykit": "latest",
+    "partysocket": "latest"
   }
 }

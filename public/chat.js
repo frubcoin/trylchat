@@ -2,7 +2,18 @@
    ★ NekoChat 2000 — Client Script ★
    ═══════════════════════════════════════ */
 
-const socket = io();
+// ═══ PARTYKIT CONNECTION ═══
+// In dev, PartyKit runs on localhost:1999
+// In production, update this to your deployed PartyKit host
+const PARTYKIT_HOST =
+    window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "localhost:1999"
+        : "nekochat.frubcoin.partykit.dev"; // ← UPDATE THIS after deployment
+
+const ws = new PartySocket({
+    host: PARTYKIT_HOST,
+    room: "main-lobby",
+});
 
 // ═══ DOM ELEMENTS ═══
 const loginOverlay = document.getElementById('login-overlay');
@@ -25,7 +36,7 @@ loginForm.addEventListener('submit', (e) => {
     if (!name) return;
 
     currentUsername = name;
-    socket.emit('join', name);
+    ws.send(JSON.stringify({ type: 'join', username: name }));
 
     loginOverlay.classList.add('hidden');
     chatPage.classList.remove('hidden');
@@ -38,30 +49,49 @@ chatForm.addEventListener('submit', (e) => {
     const msg = chatInput.value.trim();
     if (!msg) return;
 
-    socket.emit('chat-message', msg);
+    ws.send(JSON.stringify({ type: 'chat', text: msg }));
     chatInput.value = '';
     chatInput.focus();
 });
 
 // ═══ RECEIVE MESSAGES ═══
-socket.on('chat-message', (data) => {
-    appendChatMessage(data);
-    scrollToBottom();
-});
+ws.addEventListener('message', (event) => {
+    let data;
+    try {
+        data = JSON.parse(event.data);
+    } catch {
+        return;
+    }
 
-socket.on('system-message', (data) => {
-    appendSystemMessage(data);
-    scrollToBottom();
-});
-
-socket.on('user-list', (users) => {
-    updateUserList(users);
-});
-
-socket.on('visitor-count', (count) => {
-    const padded = String(count).padStart(6, '0');
-    if (visitorNum) visitorNum.textContent = count;
-    if (counterValue) counterValue.textContent = padded;
+    switch (data.type) {
+        case 'chat-message':
+            appendChatMessage(data);
+            scrollToBottom();
+            break;
+        case 'system-message':
+            appendSystemMessage(data);
+            scrollToBottom();
+            break;
+        case 'user-list':
+            updateUserList(data.users);
+            break;
+        case 'visitor-count':
+            updateVisitorCount(data.count);
+            break;
+        case 'history':
+            // Replay chat history on join
+            if (data.messages && Array.isArray(data.messages)) {
+                data.messages.forEach(msg => {
+                    if (msg.msgType === 'chat') {
+                        appendChatMessage(msg);
+                    } else if (msg.msgType === 'system') {
+                        appendSystemMessage(msg);
+                    }
+                });
+                scrollToBottom();
+            }
+            break;
+    }
 });
 
 // ═══ RENDER FUNCTIONS ═══
@@ -78,8 +108,6 @@ function appendChatMessage(data) {
     const div = document.createElement('div');
     div.className = 'chat-msg msg-flash';
     div.style.borderLeftColor = data.color;
-
-    const isMe = data.username === currentUsername;
 
     div.innerHTML = `
     <div class="msg-header">
@@ -101,7 +129,7 @@ function appendSystemMessage(data) {
 
 function updateUserList(users) {
     userListEl.innerHTML = '';
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
         userListEl.innerHTML = '<li class="no-users">No one here yet...</li>';
         return;
     }
@@ -111,6 +139,12 @@ function updateUserList(users) {
         li.textContent = u.username;
         userListEl.appendChild(li);
     });
+}
+
+function updateVisitorCount(count) {
+    const padded = String(count).padStart(6, '0');
+    if (visitorNum) visitorNum.textContent = count;
+    if (counterValue) counterValue.textContent = padded;
 }
 
 function scrollToBottom() {
@@ -140,18 +174,17 @@ document.addEventListener('mousemove', (e) => {
 
 // ═══ KEYBOARD SHORTCUT ═══
 document.addEventListener('keydown', (e) => {
-    // Focus chat input on Enter if not already focused
     if (e.key === 'Enter' && document.activeElement !== chatInput && !loginOverlay.classList.contains('hidden') === false) {
         chatInput.focus();
     }
 });
 
 // ═══ ON CONNECT / DISCONNECT ═══
-socket.on('connect', () => {
+ws.addEventListener('open', () => {
     console.log('✦ Connected to NekoChat 2000 ✦');
 });
 
-socket.on('disconnect', () => {
+ws.addEventListener('close', () => {
     appendSystemMessage({
         text: '⚠ Connection lost... Reconnecting... ⚠',
         timestamp: Date.now()
