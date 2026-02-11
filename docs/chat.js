@@ -61,22 +61,22 @@ function connectWebSocket() {
                 break;
             // ═══ GAME EVENTS ═══
             case 'game-ready':
-                showGameOverlay('ready');
+                if (currentUsername) showGameOverlay('ready', data);
                 break;
             case 'game-go':
-                showGameOverlay('go');
+                if (currentUsername) showGameOverlay('go', data);
                 break;
             case 'game-dq':
-                showGameOverlay('dq');
+                if (currentUsername) showGameOverlay('dq', data);
                 break;
             case 'game-win':
-                showGameOverlay('win', data);
+                if (currentUsername) showGameOverlay('win', data);
                 break;
             case 'game-cancel':
-                showGameOverlay('cancel');
+                if (currentUsername) showGameOverlay('cancel', data);
                 break;
             case 'game-series-end':
-                showGameOverlay('series-end', data);
+                if (currentUsername) showGameOverlay('series-end', data);
                 break;
         }
     });
