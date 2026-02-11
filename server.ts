@@ -1,4 +1,6 @@
 import type * as Party from "partykit/server";
+import nacl from "tweetnacl";
+import bs58 from "bs58";
 
 // Retro color palette for usernames
 const RETRO_COLORS = [
@@ -55,6 +57,7 @@ export default class NekoChat implements Party.Server {
     const HELIUS_API_KEY = (this.room.env.HELIUS_API_KEY as string) || "cc4ba0bb-9e76-44be-8681-511665f1c262";
     const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
     try {
+      console.log(`[TOKEN CHECK] Wallet: ${wallet}, Mint: ${TOKEN_MINT}`);
       const response = await fetch(HELIUS_RPC, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,15 +73,22 @@ export default class NekoChat implements Party.Server {
         })
       });
       const data: any = await response.json();
+      console.log(`[TOKEN CHECK] Response:`, JSON.stringify(data).substring(0, 500));
+      if (data.error) {
+        console.error(`[TOKEN CHECK] RPC error:`, data.error);
+        return false;
+      }
       if (data.result?.value?.length > 0) {
         for (const account of data.result.value) {
           const amount = account.account.data.parsed.info.tokenAmount.uiAmount;
+          console.log(`[TOKEN CHECK] Found account with amount: ${amount}`);
           if (amount > 0) return true;
         }
       }
+      console.log(`[TOKEN CHECK] No token accounts found or all balances are 0`);
       return false;
     } catch (err) {
-      console.error("Token verification failed:", err);
+      console.error("[TOKEN CHECK] Exception:", err);
       return false;
     }
   }
@@ -146,6 +156,31 @@ export default class NekoChat implements Party.Server {
       const wallet = parsed.wallet || null;
 
       if (!username) return;
+
+      // ═══ SIGNATURE VERIFICATION ═══
+      if (!wallet) {
+        sender.send(JSON.stringify({ type: "join-error", reason: "Wallet required." }));
+        return;
+      }
+      if (!parsed.signature || !parsed.signMessage) {
+        sender.send(JSON.stringify({ type: "join-error", reason: "Wallet signature required." }));
+        return;
+      }
+      try {
+        const sigBytes = Uint8Array.from(atob(parsed.signature), (c: string) => c.charCodeAt(0));
+        const msgBytes = new TextEncoder().encode(parsed.signMessage);
+        const pubKeyBytes = bs58.decode(wallet);
+        const isValid = nacl.sign.detached.verify(msgBytes, sigBytes, pubKeyBytes);
+        if (!isValid) {
+          sender.send(JSON.stringify({ type: "join-error", reason: "Invalid wallet signature." }));
+          return;
+        }
+        console.log(`[SIG] Verified wallet ${wallet} for ${username}`);
+      } catch (err) {
+        console.error("[SIG] Verification error:", err);
+        sender.send(JSON.stringify({ type: "join-error", reason: "Signature verification failed." }));
+        return;
+      }
 
       // Access control: gated rooms use token ownership, others use whitelist
       const isGatedRoom = GATED_ROOMS.includes(this.room.id);

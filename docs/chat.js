@@ -18,6 +18,8 @@ const ROOMS = [
 
 let currentRoom = 'main-lobby';
 let hasToken = false;
+let currentSignature = null;
+let currentSignMsg = null;
 
 function getWsUrl(roomId) {
     return `${WS_PROTOCOL}://${PARTYKIT_HOST}/party/${roomId}`;
@@ -35,7 +37,13 @@ function connectWebSocket(roomId) {
     ws.addEventListener('open', () => {
         console.log(`connected to ${roomId}`);
         if (currentUsername) {
-            ws.send(JSON.stringify({ type: 'join', username: currentUsername, wallet: currentWalletAddress }));
+            ws.send(JSON.stringify({
+                type: 'join',
+                username: currentUsername,
+                wallet: currentWalletAddress,
+                signature: currentSignature,
+                signMessage: currentSignMsg
+            }));
         }
     });
 
@@ -294,6 +302,13 @@ DOM.btnPhantom.addEventListener('click', async () => {
             const resp = await window.solana.connect();
             currentWalletAddress = resp.publicKey.toString();
 
+            // Sign a message to prove wallet ownership
+            const msg = 'Sign in to tryl.chat';
+            const encodedMsg = new TextEncoder().encode(msg);
+            const { signature } = await window.solana.signMessage(encodedMsg, 'utf8');
+            currentSignature = btoa(String.fromCharCode(...new Uint8Array(signature)));
+            currentSignMsg = msg;
+
             // Check token balance for gated rooms
             hasToken = await checkTokenBalance(currentWalletAddress);
             renderRoomList();
@@ -332,7 +347,9 @@ DOM.loginForm.addEventListener('submit', (e) => {
         ws.send(JSON.stringify({
             type: 'join',
             username: name,
-            wallet: currentWalletAddress
+            wallet: currentWalletAddress,
+            signature: currentSignature,
+            signMessage: currentSignMsg
         }));
     }
     DOM.loginOverlay.classList.add('hidden');
