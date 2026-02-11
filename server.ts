@@ -20,11 +20,11 @@ export default class NekoChat implements Party.Server {
 
   async onStart() {
     // Initialize visitor count if not set
-    const count = await this.room.storage.get("visitorCount");
+    const count = await this.room.storage.get("realVisitorCount");
     if (count === undefined) {
       await this.room.storage.put(
-        "visitorCount",
-        Math.floor(Math.random() * 9000) + 1000
+        "realVisitorCount",
+        0
       );
     }
   }
@@ -32,9 +32,9 @@ export default class NekoChat implements Party.Server {
   async onConnect(conn: Party.Connection) {
     // Increment visitor count
     let visitorCount =
-      ((await this.room.storage.get("visitorCount")) as number) || 0;
+      ((await this.room.storage.get("realVisitorCount")) as number) || 0;
     visitorCount++;
-    await this.room.storage.put("visitorCount", visitorCount);
+    await this.room.storage.put("realVisitorCount", visitorCount);
 
     // Send visitor count to the new connection
     conn.send(JSON.stringify({ type: "visitor-count", count: visitorCount }));
@@ -84,7 +84,7 @@ export default class NekoChat implements Party.Server {
       await this.broadcastUserList();
 
       // Broadcast visitor count
-      const visitorCount = await this.room.storage.get("visitorCount");
+      const visitorCount = await this.room.storage.get("realVisitorCount");
       this.room.broadcast(
         JSON.stringify({ type: "visitor-count", count: visitorCount })
       );
