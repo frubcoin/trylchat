@@ -183,6 +183,8 @@ export default class NekoChat implements Party.Server {
       const wallet = parsed.wallet || null;
       const signature = parsed.signature || null;
 
+      console.log(`[JOIN] Room: ${this.room.id}, User: ${username}, Wallet: ${wallet}, Signature: ${signature ? signature.substring(0, 10) + "..." : "MISSING"}`);
+
       if (!username) return;
 
       // 1. Signature Verification (if wallet is provided)
