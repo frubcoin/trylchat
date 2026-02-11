@@ -22,7 +22,7 @@ const MAX_MESSAGES_PER_WINDOW = 5;
 // Gating Configuration
 const GATED_ROOMS = {
   "holder-lounge": {
-    mint: "Gh6cBL11RRwVYHUyoGFXdYJXhWW1HETnPriNZN71pump",
+    mint: "7v5gimdqrmiuTnvTg4g5yhpj3dU4vCdcsdtJkr2eNFXN",
     minBalance: 1
   }
 };
