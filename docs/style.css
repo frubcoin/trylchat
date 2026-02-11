@@ -328,7 +328,28 @@ body {
   font-weight: 300;
 }
 
-/* ═══ PINNED BANNER ═══ */
+/* ═══ ADMIN BADGE ═══ */
+.admin-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #000;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  font-family: var(--font-body);
+}
+
+.admin-badge.mini {
+  font-size: 8px;
+  padding: 1px 3px;
+  margin-left: 4px;
+}
+
 #pinned-banner {
   display: flex;
   align-items: center;

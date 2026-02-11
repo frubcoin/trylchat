@@ -417,6 +417,7 @@ export default class NekoChat implements Party.Server {
         username,
         color,
         text,
+        isAdmin,
         timestamp: Date.now(),
       };
 
@@ -511,7 +512,7 @@ export default class NekoChat implements Party.Server {
   }
 
   async broadcastUserList() {
-    const users: { username: string; color: string; wallet?: string }[] = [];
+    const users: { username: string; color: string; wallet?: string; isAdmin?: boolean }[] = [];
     let totalConnections = 0;
     for (const conn of this.room.getConnections()) {
       totalConnections++;
@@ -519,7 +520,8 @@ export default class NekoChat implements Party.Server {
       if (state?.username) {
         users.push({
           username: state.username,
-          color: state.color
+          color: state.color,
+          isAdmin: state.isAdmin
         });
       }
     }

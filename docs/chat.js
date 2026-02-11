@@ -321,6 +321,13 @@ function appendChatMessage(data) {
     nameEl.textContent = data.username;
     nameEl.style.color = data.color;
 
+    if (data.isAdmin) {
+        const badge = document.createElement('span');
+        badge.className = 'admin-badge';
+        badge.textContent = 'ADMIN';
+        nameEl.after(badge);
+    }
+
     div.querySelector('.msg-text').innerText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
     DOM.chatMessages.appendChild(div);
@@ -351,6 +358,14 @@ function updateUserList(users, total) {
         const li = document.createElement('li');
         li.style.color = u.color;
         li.textContent = u.username;
+
+        if (u.isAdmin) {
+            const badge = document.createElement('span');
+            badge.className = 'admin-badge mini';
+            badge.textContent = 'ADMIN';
+            li.appendChild(badge);
+        }
+
         DOM.userList.appendChild(li);
     });
 }
