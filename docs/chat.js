@@ -131,6 +131,18 @@ const DOM = {
 let currentUsername = '';
 let currentWalletAddress = null;
 
+// Chat history tracking
+const sentHistory = [];
+let historyIndex = -1;
+let currentDraft = '';
+
+const COMMANDS = [
+    '/whitelist',
+    '/whitelist add',
+    '/whitelist bulk',
+    '/whitelist remove'
+];
+
 // ═══ WALLET FLOW ═══
 DOM.btnPhantom.addEventListener('click', async () => {
     if (window.solana && window.solana.isPhantom) {
@@ -211,10 +223,48 @@ DOM.colorPicker.addEventListener('change', (e) => {
 });
 
 // ═══ SEND ═══
+// Message History & Auto-complete
+DOM.chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (historyIndex === -1) currentDraft = DOM.chatInput.value;
+        if (historyIndex < sentHistory.length - 1) {
+            historyIndex++;
+            DOM.chatInput.value = sentHistory[sentHistory.length - 1 - historyIndex];
+        }
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (historyIndex > 0) {
+            historyIndex--;
+            DOM.chatInput.value = sentHistory[sentHistory.length - 1 - historyIndex];
+        } else if (historyIndex === 0) {
+            historyIndex = -1;
+            DOM.chatInput.value = currentDraft;
+        }
+    } else if (e.key === 'Tab') {
+        e.preventDefault();
+        const val = DOM.chatInput.value.toLowerCase();
+        if (val.startsWith('/')) {
+            const match = COMMANDS.find(c => c.startsWith(val));
+            if (match) {
+                DOM.chatInput.value = match + ' ';
+            }
+        }
+    }
+});
+
 DOM.chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const msg = DOM.chatInput.value.trim();
     if (!msg) return;
+
+    // Save to history
+    if (sentHistory[sentHistory.length - 1] !== msg) {
+        sentHistory.push(msg);
+    }
+    historyIndex = -1;
+    currentDraft = '';
+
     if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'chat', text: msg }));
     }
