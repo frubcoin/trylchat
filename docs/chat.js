@@ -530,3 +530,6 @@ function showGameOverlay(state, data) {
         }, 6000);
     }
 }
+
+// Start connection after DOM and listeners are ready
+connectWebSocket();
