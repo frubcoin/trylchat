@@ -86,13 +86,70 @@ const onlineCount = document.getElementById('online-count');
 let currentUsername = '';
 
 // ═══ LOGIN ═══
+const loginBox = document.getElementById('login-box');
+const stepWallet = document.getElementById('step-wallet');
+const btnPhantom = document.getElementById('btn-phantom');
+const manualInput = document.getElementById('manual-wallet-input');
+const btnSkip = document.getElementById('btn-skip-wallet');
+const btnBack = document.getElementById('btn-back-wallet');
+
+let currentWalletAddress = null;
+
+// ═══ WALLET FLOW ═══
+btnPhantom.addEventListener('click', async () => {
+    if (window.solana && window.solana.isPhantom) {
+        try {
+            const resp = await window.solana.connect();
+            currentWalletAddress = resp.publicKey.toString();
+            goToStep2();
+        } catch (err) {
+            console.error(err);
+            alert('Connection failed or rejected');
+        }
+    } else {
+        alert('Phantom wallet not found! Please install it.');
+        window.open('https://phantom.app/', '_blank');
+    }
+});
+
+manualInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const val = manualInput.value.trim();
+        if (val) {
+            currentWalletAddress = val;
+            goToStep2();
+        }
+    }
+});
+
+btnSkip.addEventListener('click', () => {
+    currentWalletAddress = null;
+    goToStep2();
+});
+
+btnBack.addEventListener('click', () => {
+    loginForm.classList.add('hidden');
+    stepWallet.classList.remove('hidden');
+});
+
+function goToStep2() {
+    stepWallet.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    usernameInput.focus();
+}
+
+// ═══ LOGIN ═══
 loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = usernameInput.value.trim();
     if (!name) return;
     currentUsername = name;
     if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'join', username: name }));
+        ws.send(JSON.stringify({
+            type: 'join',
+            username: name,
+            wallet: currentWalletAddress
+        }));
     }
     loginOverlay.classList.add('hidden');
     chatPage.classList.remove('hidden');

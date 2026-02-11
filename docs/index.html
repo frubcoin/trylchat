@@ -18,11 +18,31 @@
   <div id="login-overlay">
     <div id="login-box">
       <div class="login-wordmark">tryl.chat</div>
-      <p class="login-subtitle">enter a name to start chatting</p>
-      <form id="login-form">
-        <input type="text" id="username-input" maxlength="20" placeholder="your name" autocomplete="off" autofocus>
-        <button type="submit" class="btn-primary">Join →</button>
+
+      <!-- STEP 1: WALLET -->
+      <div id="step-wallet">
+        <p class="login-subtitle">connect your solana wallet</p>
+        <div class="login-actions">
+          <button id="btn-phantom" class="btn-primary" style="background: #AB9FF2; color: #000;">
+            Connect Phantom
+          </button>
+          <div class="divider">or</div>
+          <input type="text" id="manual-wallet-input" placeholder="enter wallet address manually" class="input-minimal">
+          <button id="btn-skip-wallet" class="btn-text">skip for now</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: USERNAME -->
+      <form id="login-form" class="hidden">
+        <p class="login-subtitle">enter a name to start chatting</p>
+        <div class="login-actions">
+          <input type="text" id="username-input" maxlength="20" placeholder="your name" autocomplete="off">
+          <button type="submit" class="btn-primary">Join →</button>
+          <button type="button" id="btn-back-wallet" class="btn-text" style="font-size: 12px; margin-top: 8px;">←
+            back</button>
+        </div>
       </form>
+
       <p class="login-hint">be kind to each other</p>
     </div>
   </div>

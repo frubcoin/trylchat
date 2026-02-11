@@ -53,10 +53,14 @@ export default class NekoChat implements Party.Server {
         .replace(/[<>&"']/g, "")
         .trim()
         .substring(0, 20);
+      const wallet = parsed.wallet || null;
+
       if (!username) return;
 
+      console.log(`[JOIN] User: ${username}, Wallet: ${wallet || "None"}`);
+
       const color = getRandomColor();
-      sender.setState({ username, color });
+      sender.setState({ username, color, wallet });
 
       // Send chat history to joining user
       const history =
