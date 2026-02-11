@@ -62,7 +62,7 @@ export default class NekoChat implements Party.Server {
       const history =
         ((await this.room.storage.get("chatHistory")) as any[]) || [];
       const recent = history.slice(-HISTORY_ON_JOIN);
-      conn.send(JSON.stringify({ type: "history", messages: recent }));
+      sender.send(JSON.stringify({ type: "history", messages: recent }));
 
       // Broadcast join system message
       const joinMsg = {
@@ -162,6 +162,11 @@ export default class NekoChat implements Party.Server {
       await this.room.storage.put(
         "chatHistory",
         history.slice(-MAX_HISTORY)
+      );
+
+      // Tell others to remove cursor
+      this.room.broadcast(
+        JSON.stringify({ type: "cursor-gone", id: conn.id })
       );
 
       // Broadcast updated user list
