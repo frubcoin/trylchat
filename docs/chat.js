@@ -202,6 +202,7 @@ const COMMANDS = [
 // ═══ TOKEN CHECK ═══
 async function checkTokenBalance(walletAddress) {
     try {
+        console.log('[TOKEN] Checking balance for', walletAddress, 'mint:', TOKEN_MINT);
         const response = await fetch(HELIUS_RPC_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -217,15 +218,22 @@ async function checkTokenBalance(walletAddress) {
             })
         });
         const data = await response.json();
+        console.log('[TOKEN] RPC response:', JSON.stringify(data).substring(0, 500));
+        if (data.error) {
+            console.error('[TOKEN] RPC error:', data.error);
+            return false;
+        }
         if (data.result && data.result.value && data.result.value.length > 0) {
             for (const account of data.result.value) {
                 const amount = account.account.data.parsed.info.tokenAmount.uiAmount;
+                console.log('[TOKEN] Found account with amount:', amount);
                 if (amount > 0) return true;
             }
         }
+        console.log('[TOKEN] No token accounts found or all balances are 0');
         return false;
     } catch (err) {
-        console.error('Token check failed:', err);
+        console.error('[TOKEN] Check failed:', err);
         return false;
     }
 }
