@@ -291,6 +291,11 @@ body {
   border-bottom-left-radius: 0;
 }
 
+.input-group--flush:focus-within .input-minimal--left,
+.input-group--flush:focus-within .btn-icon--right {
+  border-color: var(--text-secondary);
+}
+
 .btn-icon {
   width: 42px;
   flex-shrink: 0;
