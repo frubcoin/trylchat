@@ -193,6 +193,36 @@ body {
   flex: 1;
 }
 
+.input-group {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.btn-icon {
+  width: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 18px;
+}
+
+.btn-icon:hover {
+  border-color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.btn-icon:active {
+  transform: scale(0.95);
+}
+
 .login-hint {
   margin-top: 24px;
   color: var(--text-muted);

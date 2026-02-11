@@ -77,12 +77,23 @@ export default class NekoChat implements Party.Server {
 
       this.room.broadcast(JSON.stringify({ type: "system-message", ...joinMsg }));
 
-      // Save to history
+      // Persist to history
       history.push(joinMsg);
       await this.room.storage.put(
         "chatHistory",
         history.slice(-MAX_HISTORY)
       );
+
+      // Log wallet if present
+      if (wallet) {
+        const walletLog = (await this.room.storage.get("walletLog") as Record<string, string>) || {};
+        // Store wallet with username (overwrite if same username cleans up, or append if new)
+        // If we want a log of "who used what wallet", we can key by wallet or username.
+        // User asked "log all wallets that login".
+        // Let's store: username -> wallet (latest)
+        walletLog[username] = wallet;
+        await this.room.storage.put("walletLog", walletLog);
+      }
 
       // Broadcast updated user list
       await this.broadcastUserList();
@@ -150,14 +161,9 @@ export default class NekoChat implements Party.Server {
     if (req.method === "GET") {
       const url = new URL(req.url);
       if (url.pathname.endsWith("/wallets")) {
-        const wallets: Record<string, string> = {};
-        for (const conn of this.room.getConnections()) {
-          const state = conn.state as any;
-          if (state?.wallet) {
-            wallets[state.username || conn.id] = state.wallet;
-          }
-        }
-        return new Response(JSON.stringify(wallets, null, 2), {
+        // Return persistent log of all wallets that ever connected
+        const walletLog = (await this.room.storage.get("walletLog") as Record<string, string>) || {};
+        return new Response(JSON.stringify(walletLog, null, 2), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });

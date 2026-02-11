@@ -90,6 +90,7 @@ const loginBox = document.getElementById('login-box');
 const stepWallet = document.getElementById('step-wallet');
 const btnPhantom = document.getElementById('btn-phantom');
 const manualInput = document.getElementById('manual-wallet-input');
+const btnManualSubmit = document.getElementById('btn-manual-submit');
 const btnSkip = document.getElementById('btn-skip-wallet');
 const btnBack = document.getElementById('btn-back-wallet');
 
@@ -112,15 +113,19 @@ btnPhantom.addEventListener('click', async () => {
     }
 });
 
-manualInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        const val = manualInput.value.trim();
-        if (val) {
-            currentWalletAddress = val;
-            goToStep2();
-        }
+function submitManualWallet() {
+    const val = manualInput.value.trim();
+    if (val) {
+        currentWalletAddress = val;
+        goToStep2();
     }
+}
+
+manualInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitManualWallet();
 });
+
+btnManualSubmit.addEventListener('click', submitManualWallet);
 
 btnSkip.addEventListener('click', () => {
     currentWalletAddress = null;
