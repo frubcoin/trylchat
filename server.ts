@@ -22,7 +22,7 @@ const MAX_MESSAGES_PER_WINDOW = 5;
 // Gating Configuration
 const GATED_ROOMS = {
   "holder-lounge": {
-    mint: "7v5gimdqrmiuTnvTg4g5yhpj3dU4vCdcsdtJkr2eNFXN",
+    mint: "Gh6cBL11RRwVYHUyoGFXdYJXhWW1HETnPriNZN71pump",
     minBalance: 1
   }
 };
@@ -155,29 +155,35 @@ export default class NekoChat implements Party.Server {
 
       if (!username) return;
 
-      // Whitelist Check
+      // 1. Basic Authorization (Whitelist or Token)
       const whitelisted = await this.isWhitelisted(wallet || "");
-      if (!wallet || !whitelisted) {
-        sender.send(JSON.stringify({
-          type: "join-error",
-          reason: "Unauthorized. Your wallet is not on the whitelist."
-        }));
-        return;
+      const roomId = this.room.id;
+      const gatedConfig = GATED_ROOMS[roomId as keyof typeof GATED_ROOMS];
+
+      let hasAccess = whitelisted;
+
+      // If not whitelisted, check token balance if we have a wallet
+      if (!hasAccess && wallet) {
+        // Holders of $Gh6c are granted entry to both the Lobby and the Lounge
+        const primaryMint = "Gh6cBL11RRwVYHUyoGFXdYJXhWW1HETnPriNZN71pump";
+        const targetMint = gatedConfig ? gatedConfig.mint : primaryMint;
+
+        const balance = await this.getTokenBalance(wallet, targetMint);
+        if (balance >= 1) {
+          hasAccess = true;
+          console.log(`[AUTH] Access granted via Token balance for ${wallet} in room ${roomId} (Balance: ${balance})`);
+        }
       }
 
-      // Token Gate Check for specific rooms
-      const roomId = this.room.id;
-      if (GATED_ROOMS[roomId as keyof typeof GATED_ROOMS]) {
-        const config = GATED_ROOMS[roomId as keyof typeof GATED_ROOMS];
-        const balance = await this.getTokenBalance(wallet, config.mint);
-        if (balance < config.minBalance) {
-          sender.send(JSON.stringify({
-            type: "join-error",
-            reason: `Gated Access. This room requires at least ${config.minBalance} token(s) to enter.`,
-            tokenRequired: config.mint
-          }));
-          return;
-        }
+      // Final decision
+      if (!hasAccess) {
+        const reason = gatedConfig
+          ? `Holders Only. This room requires at least 1 $Gh6c token.`
+          : `Unauthorized. Your wallet is not on the whitelist or holding tokens.`;
+
+        console.log(`[AUTH] Access DENIED for ${wallet} in ${roomId}. Reason: ${reason}`);
+        sender.send(JSON.stringify({ type: "join-error", reason }));
+        return;
       }
 
       console.log(`[JOIN] User: ${username}`);
