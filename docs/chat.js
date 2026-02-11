@@ -145,9 +145,7 @@ const DOM = {
     btnPhantom: document.getElementById('btn-phantom'),
     manualInput: document.getElementById('manual-wallet-input'),
     btnManualSubmit: document.getElementById('btn-manual-submit'),
-    btnSkip: document.getElementById('btn-skip-wallet'),
     btnBack: document.getElementById('btn-back-wallet'),
-    colorPicker: document.getElementById('color-picker'),
     btnAdminGame: document.getElementById('btn-admin-game'),
     adminPanel: document.getElementById('admin-panel'),
     roundSelect: document.getElementById('round-select'),
@@ -233,7 +231,7 @@ DOM.loginForm.addEventListener('submit', (e) => {
     const name = DOM.usernameInput.value.trim();
     if (!name) return;
     currentUsername = name;
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
             type: 'join',
             username: name,
@@ -243,16 +241,6 @@ DOM.loginForm.addEventListener('submit', (e) => {
     DOM.loginOverlay.classList.add('hidden');
     DOM.chatPage.classList.remove('hidden');
     DOM.chatInput.focus();
-});
-
-// ═══ COLOR PICKER ═══
-DOM.colorPicker.addEventListener('change', (e) => {
-    if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            type: 'update-color',
-            color: e.target.value
-        }));
-    }
 });
 
 // ═══ SEND ═══
@@ -298,7 +286,7 @@ DOM.chatForm.addEventListener('submit', (e) => {
     historyIndex = -1;
     currentDraft = '';
 
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'chat', text: msg }));
     }
     DOM.chatInput.value = '';
