@@ -73,6 +73,23 @@
 
     <!-- MAIN LAYOUT -->
     <div id="main-layout">
+      <!-- ROOM SIDEBAR -->
+      <nav id="room-sidebar">
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">rooms</h3>
+          <ul id="room-list">
+            <li class="room-item active" data-room="main-lobby">
+              <span class="room-icon">#</span>
+              <span class="room-name">lobby</span>
+            </li>
+            <li class="room-item" data-room="holder-lounge">
+              <span class="room-icon">🔒</span>
+              <span class="room-name">holders</span>
+              <span class="room-badge">$Gh6c</span>
+            </li>
+          </ul>
+        </div>
+      </nav>
 
       <!-- CHAT AREA -->
       <div id="chat-area">
@@ -85,20 +102,16 @@
           <!-- messages appear here -->
         </div>
         <form id="chat-form">
-          <div id="chat-input-area">
-            <input type="color" id="color-picker" title="Change name color">
-            <input type="text" id="chat-input" placeholder="say something..." maxlength="500" autocomplete="off">
-            <button type="submit" class="btn-send">↑</button>
-          </div>
+          <input type="text" id="chat-input" placeholder="type a message..." autocomplete="off">
         </form>
       </div>
 
-      <!-- SIDEBAR -->
-      <aside id="sidebar">
+      <!-- USER LIST SIDEBAR -->
+      <aside id="info-sidebar">
         <div class="sidebar-section">
-          <h3 class="sidebar-title">People</h3>
+          <h3 class="sidebar-title">online</h3>
           <ul id="user-list">
-            <li class="no-users">no one here yet</li>
+            <!-- users appear here -->
           </ul>
         </div>
         <div class="sidebar-section">

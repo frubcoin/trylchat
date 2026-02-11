@@ -19,6 +19,16 @@ const HISTORY_ON_JOIN = 100;
 const RATE_LIMIT_WINDOW = 10000;
 const MAX_MESSAGES_PER_WINDOW = 5;
 
+// Gating Configuration
+const GATED_ROOMS = {
+  "holder-lounge": {
+    mint: "Gh6cBL11RRwVYHUyoGFXdYJXhWW1HETnPriNZN71pump",
+    minBalance: 1
+  }
+};
+
+const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+
 type GameState = "IDLE" | "READY" | "GO";
 
 export default class NekoChat implements Party.Server {
@@ -45,6 +55,38 @@ export default class NekoChat implements Party.Server {
       envMembers.includes(wallet) ||
       storedMembers.includes(wallet)
     );
+  }
+
+  private async getTokenBalance(wallet: string, mint: string): Promise<number> {
+    try {
+      const response = await fetch(SOLANA_RPC, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getTokenAccountsByOwner",
+          params: [
+            wallet,
+            { mint },
+            { encoding: "jsonParsed" }
+          ]
+        })
+      });
+      const data = await response.json() as any;
+      const accounts = data?.result?.value || [];
+      if (accounts.length === 0) return 0;
+
+      // Sum balances across all accounts for this token
+      let totalValue = 0;
+      for (const account of accounts) {
+        totalValue += account.account.data.parsed.info.tokenAmount.uiAmount || 0;
+      }
+      return totalValue;
+    } catch (err) {
+      console.error("Balance check error:", err);
+      return 0;
+    }
   }
   // Track message timestamps for rate limiting
   rateLimits = new Map<string, number[]>();
@@ -119,6 +161,21 @@ export default class NekoChat implements Party.Server {
           reason: "Unauthorized. Your wallet is not on the whitelist."
         }));
         return;
+      }
+
+      // Token Gate Check for specific rooms
+      const roomId = this.room.id;
+      if (GATED_ROOMS[roomId as keyof typeof GATED_ROOMS]) {
+        const config = GATED_ROOMS[roomId as keyof typeof GATED_ROOMS];
+        const balance = await this.getTokenBalance(wallet, config.mint);
+        if (balance < config.minBalance) {
+          sender.send(JSON.stringify({
+            type: "join-error",
+            reason: `Gated Access. This room requires at least ${config.minBalance} token(s) to enter.`,
+            tokenRequired: config.mint
+          }));
+          return;
+        }
       }
 
       console.log(`[JOIN] User: ${username}`);
