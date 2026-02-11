@@ -74,6 +74,7 @@ export default class NekoChat implements Party.Server {
         })
       });
       const data = await response.json() as any;
+      console.log(`[BALANCE] Response for ${wallet}:`, JSON.stringify(data));
       const accounts = data?.result?.value || [];
       if (accounts.length === 0) return 0;
 
@@ -82,9 +83,10 @@ export default class NekoChat implements Party.Server {
       for (const account of accounts) {
         totalValue += account.account.data.parsed.info.tokenAmount.uiAmount || 0;
       }
+      console.log(`[BALANCE] Total for ${wallet} on ${mint}: ${totalValue}`);
       return totalValue;
     } catch (err) {
-      console.error("Balance check error:", err);
+      console.error("Balance check error for wallet", wallet, ":", err);
       return 0;
     }
   }

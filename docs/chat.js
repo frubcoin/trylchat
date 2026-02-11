@@ -19,9 +19,13 @@ function connectWebSocket(roomId = currentRoomId) {
     ws = new WebSocket(url);
 
     ws.addEventListener('open', () => {
-        console.log('connected to tryl.chat');
+        console.log(`connected to tryl.chat room: ${currentRoomId}`);
         if (currentUsername) {
-            ws.send(JSON.stringify({ type: 'join', username: currentUsername }));
+            ws.send(JSON.stringify({
+                type: 'join',
+                username: currentUsername,
+                wallet: currentWalletAddress
+            }));
         }
     });
 
