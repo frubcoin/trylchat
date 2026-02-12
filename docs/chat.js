@@ -194,6 +194,8 @@ const DOM = {
     pinText: document.getElementById('pin-text'),
     roomList: document.getElementById('room-list'),
     walletAddressDisplay: document.getElementById('wallet-address-display'),
+    roomsSidebar: document.getElementById('rooms-sidebar'),
+    sidebar: document.getElementById('sidebar'),
 };
 
 let currentUsername = '';
@@ -994,6 +996,14 @@ function showGameOverlay(state, data) {
 document.addEventListener('click', () => {
     document.body.classList.remove('mobile-menu-active', 'mobile-users-active');
 });
+
+// Stop propagation on sidebar clicks so they don't auto-close when clicking inside
+if (DOM.roomsSidebar) {
+    DOM.roomsSidebar.addEventListener('click', (e) => e.stopPropagation());
+}
+if (DOM.sidebar) {
+    DOM.sidebar.addEventListener('click', (e) => e.stopPropagation());
+}
 
 // ═══ SWIPE GESTURES (ZingTouch) ═══
 function setupGestures() {

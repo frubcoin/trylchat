@@ -27,8 +27,8 @@
   --accent-rgb: 255, 255, 255;
   --font-body: 'Geist Pixel', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-wordmark: 'Jersey 10', cursive;
-  --radius: 12px;
-  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-sm: 6px;
 }
 
 /* ═══ RESET ═══ */

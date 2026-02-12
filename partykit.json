@@ -1,6 +1,5 @@
 {
     "name": "nekochat",
     "main": "server.ts",
-    "serve": "docs",
     "compatibilityDate": "2024-01-01"
 }
