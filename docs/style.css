@@ -641,6 +641,14 @@ body {
 }
 
 /* ═══ EMOJI PICKER ═══ */
+#emoji-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  /* Context for picker */
+}
+
 #btn-emoji {
   background: transparent;
   border: none;
@@ -653,6 +661,7 @@ body {
   justify-content: center;
   transition: transform 0.1s, opacity 0.2s;
   opacity: 0.7;
+  line-height: 1;
 }
 
 #btn-emoji:hover {
@@ -663,9 +672,10 @@ body {
 
 #emoji-picker-container {
   position: absolute;
-  bottom: 80px;
-  /* Above input area */
-  left: 20px;
+  bottom: 100%;
+  /* Position above the wrapper */
+  left: 0;
+  margin-bottom: 12px;
   z-index: 100;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   border-radius: 12px;

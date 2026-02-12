@@ -89,13 +89,15 @@
         </div>
         <form id="chat-form">
           <div id="chat-input-area">
-            <input type="color" id="color-picker" title="Change name color">
-            <button type="button" id="btn-emoji" class="icon-btn">😊</button>
+            <div id="emoji-wrapper">
+              <input type="color" id="color-picker" title="Change name color">
+              <button type="button" id="btn-emoji" class="icon-btn">😊</button>
+              <div id="emoji-picker-container" class="hidden"></div>
+            </div>
             <input type="text" id="chat-input" placeholder="Say something..." autocomplete="off">
-            <button type="submit">Send</button>
+            <button type="submit" class="btn-send">Send</button>
           </div>
         </form>
-        <div id="emoji-picker-container" class="hidden absolute bottom-16 left-4 z-50"></div>
       </div>
 
       <!-- SIDEBAR (RIGHT) -->
