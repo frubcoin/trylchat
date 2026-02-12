@@ -194,6 +194,8 @@ const DOM = {
     pinText: document.getElementById('pin-text'),
     roomList: document.getElementById('room-list'),
     walletAddressDisplay: document.getElementById('wallet-address-display'),
+    btnMobileMenu: document.getElementById('btn-mobile-menu'),
+    btnMobileUsers: document.getElementById('btn-mobile-users'),
 };
 
 let currentUsername = '';
@@ -324,6 +326,9 @@ function switchRoom(roomId) {
         ws = null;
         oldWs.close();
     }
+
+    // Close mobile menus on switch
+    document.body.classList.remove('mobile-menu-active', 'mobile-users-active');
 
     // Connect to new room immediately
     connectWebSocket(roomId);
@@ -958,6 +963,27 @@ function showGameOverlay(state, data) {
         }, 6000);
     }
 }
+
+// ═══ MOBILE TOGGLES ═══
+if (DOM.btnMobileMenu) {
+    DOM.btnMobileMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.body.classList.toggle('mobile-menu-active');
+        document.body.classList.remove('mobile-users-active');
+    });
+}
+if (DOM.btnMobileUsers) {
+    DOM.btnMobileUsers.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.body.classList.toggle('mobile-users-active');
+        document.body.classList.remove('mobile-menu-active');
+    });
+}
+
+// Close menus when clicking elsewhere
+document.addEventListener('click', () => {
+    document.body.classList.remove('mobile-menu-active', 'mobile-users-active');
+});
 
 // Start connection after DOM and listeners are ready
 connectWebSocket('main-lobby');
