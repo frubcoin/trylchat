@@ -339,12 +339,14 @@ async function updateWalletUI() {
         DOM.walletAddressDisplay.textContent = `Wallet: ${short}`;
         DOM.walletAddressDisplay.classList.remove('hidden');
         DOM.btnPhantom.textContent = 'Sign & Enter →';
-        DOM.btnPhantom.style.background = '#00ff00'; // Green for connected/ready to sign
+        DOM.btnPhantom.style.background = '#F9FAFB';
+        DOM.btnPhantom.style.color = '#000';
     } else {
         DOM.walletAddressDisplay.textContent = '';
         DOM.walletAddressDisplay.classList.add('hidden');
         DOM.btnPhantom.textContent = 'Connect Phantom';
-        DOM.btnPhantom.style.background = '#AB9FF2';
+        DOM.btnPhantom.style.background = '#F9FAFB';
+        DOM.btnPhantom.style.color = '#000';
     }
 }
 

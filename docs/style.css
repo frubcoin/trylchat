@@ -195,7 +195,7 @@ body {
   font-size: 15px;
   font-weight: 500;
   background: var(--accent);
-  color: var(--bg);
+  color: #000;
   border: none;
   padding: 14px 32px;
   border-radius: var(--radius);
