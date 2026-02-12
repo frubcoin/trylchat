@@ -195,6 +195,13 @@ const DOM = {
 };
 
 let currentUsername = '';
+try {
+    currentUsername = localStorage.getItem('chat_username') || '';
+    if (currentUsername && DOM.usernameInput) {
+        DOM.usernameInput.value = currentUsername;
+    }
+} catch (e) { }
+
 let currentWalletAddress = null;
 
 // Chat history tracking
@@ -378,6 +385,9 @@ DOM.loginForm.addEventListener('submit', (e) => {
     const name = DOM.usernameInput.value.trim();
     if (!name) return;
     currentUsername = name;
+    try {
+        localStorage.setItem('chat_username', name);
+    } catch (e) { }
     if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
             type: 'join',
@@ -444,6 +454,7 @@ function setupColorPicker() {
 
             colorPickerInstance.on('color:change', function (color) {
                 const newColor = color.hexString;
+                userColor = newColor; // Update the variable for future room joins
                 btnColor.style.backgroundColor = newColor;
                 try {
                     localStorage.setItem('chat_color', newColor);
