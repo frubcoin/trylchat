@@ -87,13 +87,20 @@ function connectWebSocket(roomId) {
                 removeRemoteCursor(data.id);
                 break;
             case 'join-error':
+                console.error('[JOIN-ERROR]', data.reason);
                 if (DOM.loginOverlay.classList.contains('hidden')) {
                     // Already in chat — room switch error
-                    appendSystemMessage({ text: `🔒 ${data.reason || 'Cannot access this room.'}` });
-                    scrollToBottom();
-                    // Only switch back if we're not already on lobby
+                    const errorMsg = data.reason || 'Cannot access this room.';
+                    // Switch back first, then show the error (so it doesn't get cleared)
                     if (currentRoom !== 'main-lobby') {
                         switchRoom('main-lobby');
+                        setTimeout(() => {
+                            appendSystemMessage({ text: `🔒 ${errorMsg}` });
+                            scrollToBottom();
+                        }, 500);
+                    } else {
+                        appendSystemMessage({ text: `🔒 ${errorMsg}` });
+                        scrollToBottom();
                     }
                 } else {
                     alert(data.reason || 'Join failed');
