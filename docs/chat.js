@@ -1241,6 +1241,48 @@ async function translateText(text, targetLang) {
     return null;
 }
 
+// ═══ AI STATUS HELPER ═══
+function updateAIStatus(state, msg = '') {
+    const el = document.getElementById('ai-status');
+    if (!el) return;
+
+    el.className = ''; // Reset classes
+    el.innerHTML = ''; // Clear content
+
+    if (state === 'hidden') {
+        el.classList.add('hidden');
+        return;
+    }
+
+    el.classList.remove('hidden');
+
+    if (state === 'downloading') {
+        el.classList.add('status-downloading');
+        el.innerHTML = `<span>⬇️ ${msg}</span>`;
+    } else if (state === 'ready') {
+        el.classList.add('status-ready');
+        el.innerHTML = `<span>✨ AI Ready</span>`;
+        // Hide after 3 seconds
+        setTimeout(() => {
+            if (el.classList.contains('status-ready')) {
+                el.classList.add('hidden');
+            }
+        }, 3000);
+    } else if (state === 'unavailable') {
+        el.classList.add('status-unavailable');
+        el.innerHTML = `
+            <span>⚠️ AI Unavailable</span>
+            <div class="ai-tooltip">
+                <strong>Enable AI Features:</strong><br/>
+                Go to <code>chrome://flags</code> and enable:<br/>
+                • Prompt API for Gemini Nano<br/>
+                • Language Detection API<br/>
+                • Translation API
+            </div>
+        `;
+    }
+}
+
 async function appendChatMessage(data, isHistory = false) {
     if (data.isOwner || data.isMod || data.isAdmin) {
         console.log('[CHAT-RENDER] Badge Data:', {
