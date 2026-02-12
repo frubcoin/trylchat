@@ -268,18 +268,12 @@ function renderRoomList() {
         li.addEventListener('click', async () => {
             if (room.id === currentRoom) return;
 
-            if (room.gated) {
-                // Always re-check token balance before entering gated room
-                li.classList.add('locked');
+            if (room.gated && !hasToken) {
+                // Re-check token balance for visual update, but always attempt the switch
+                // (server handles admin bypass and final token check)
                 li.querySelector('.room-icon').textContent = '⏳';
-                const holds = await checkTokenBalance(currentWalletAddress);
-                hasToken = holds;
+                hasToken = await checkTokenBalance(currentWalletAddress);
                 renderRoomList();
-                if (!holds) {
-                    appendSystemMessage({ text: '🔒 You need to hold the token to access this room.' });
-                    scrollToBottom();
-                    return;
-                }
             }
 
             switchRoom(room.id);
