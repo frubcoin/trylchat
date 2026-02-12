@@ -533,7 +533,7 @@ function loadWalletColor(wallet) {
             DOM.btnColor.style.backgroundColor = userColor;
         }
         if (colorPickerInstance) {
-            colorPickerInstance.setColor(userColor);
+            applyPickerColor(userColor);
         }
     } catch (e) {
         console.warn('LocalStorage access blocked', e);
@@ -605,6 +605,17 @@ function setupColorPicker() {
         popover.appendChild(fallbackColorInput);
     }
 
+    function applyPickerColor(colorValue) {
+        if (!colorPickerInstance) return;
+        if (typeof colorPickerInstance.setColor === 'function') {
+            colorPickerInstance.setColor(colorValue);
+            return;
+        }
+        if (colorPickerInstance.color) {
+            colorPickerInstance.color.hexString = colorValue;
+        }
+    }
+
     function showColorPicker() {
         if (!colorPickerInstance && window.iro) {
             colorPickerInstance = new iro.ColorPicker(popover, {
@@ -622,7 +633,7 @@ function setupColorPicker() {
             mountFallbackPicker();
             fallbackColorInput.value = userColor;
         } else if (colorPickerInstance) {
-            colorPickerInstance.setColor(userColor);
+            applyPickerColor(userColor);
         }
         popover.classList.remove('hidden');
     }
@@ -675,6 +686,7 @@ function setupEmojiPicker() {
                     const response = await fetch(
                         'https://cdn.jsdelivr.net/npm/@emoji-mart/data@latest/sets/14/native.json'
                     );
+                    if (!response.ok) throw new Error(`emoji data fetch failed: ${response.status}`);
                     return response.json();
                 },
                 onEmojiSelect: (emoji) => {
@@ -693,8 +705,26 @@ function setupEmojiPicker() {
                 }
             };
 
-            pickerInstance = new EmojiMart.Picker(pickerOptions);
-            container.appendChild(pickerInstance);
+            try {
+                pickerInstance = new EmojiMart.Picker(pickerOptions);
+                container.appendChild(pickerInstance);
+            } catch (err) {
+                console.warn('Emoji picker failed, falling back to quick emojis:', err);
+                const quick = document.createElement('div');
+                quick.className = 'quick-emoji-picker';
+                ['😀', '😂', '🥲', '😍', '🔥', '👍', '👀', '💯', '🙏', '🎉', '🚀', '❤️'].forEach((emoji) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.textContent = emoji;
+                    b.addEventListener('click', () => {
+                        insertEmoji(emoji);
+                        hidePicker();
+                    });
+                    quick.appendChild(b);
+                });
+                pickerInstance = quick;
+                container.appendChild(quick);
+            }
         }
         container.classList.remove('hidden');
     }

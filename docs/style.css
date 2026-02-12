@@ -666,6 +666,30 @@ body {
   height: auto;
 }
 
+.quick-emoji-picker {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.quick-emoji-picker button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.quick-emoji-picker button:hover {
+  border-color: var(--text-secondary);
+}
+
 /* Chat input */
 #chat-form {
   border-top: 1px solid var(--border);
