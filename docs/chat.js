@@ -608,6 +608,7 @@ function setupColorPicker() {
     // Remove any existing listeners to prevent duplicates
     btnColor.replaceWith(btnColor.cloneNode(true));
     const newBtnColor = document.getElementById('btn-color');
+    DOM.btnColor = newBtnColor;
 
     newBtnColor.addEventListener('click', (e) => {
         console.log('Color button clicked');
@@ -658,7 +659,7 @@ function setupColorPicker() {
 
     function applyColor(newColor) {
         userColor = newColor;
-        btnColor.style.backgroundColor = newColor;
+        newBtnColor.style.backgroundColor = newColor;
 
         try {
             // Save to both generic and wallet-specific
@@ -678,7 +679,12 @@ function setupColorPicker() {
     }
 
     function mountFallbackPicker() {
-        if (fallbackColorInput) return;
+        if (fallbackColorInput) {
+            if (!fallbackColorInput.isConnected) {
+                popover.appendChild(fallbackColorInput);
+            }
+            return;
+        }
         fallbackColorInput = document.createElement('input');
         fallbackColorInput.type = 'color';
         fallbackColorInput.value = userColor;
@@ -721,6 +727,7 @@ function setupColorPicker() {
 
                 // Clear popover first
                 popover.innerHTML = '';
+                fallbackColorInput = null;
 
                 colorPickerInstance = new iro.ColorPicker(popover, {
                     width: 150,
@@ -905,8 +912,6 @@ function setupEmojiPicker() {
                 pickerInstance = quick;
                 container.appendChild(quick);
             }
-            pickerInstance = new EmojiMart.Picker(pickerOptions);
-            container.appendChild(pickerInstance);
             console.log('Emoji picker created successfully');
         }
         container.classList.remove('hidden');

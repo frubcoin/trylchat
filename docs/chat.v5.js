@@ -595,7 +595,12 @@ function setupColorPicker() {
     }
 
     function mountFallbackPicker() {
-        if (fallbackColorInput) return;
+        if (fallbackColorInput) {
+            if (!fallbackColorInput.isConnected) {
+                popover.appendChild(fallbackColorInput);
+            }
+            return;
+        }
         fallbackColorInput = document.createElement('input');
         fallbackColorInput.type = 'color';
         fallbackColorInput.value = userColor;
@@ -727,8 +732,6 @@ function setupEmojiPicker() {
                 pickerInstance = quick;
                 container.appendChild(quick);
             }
-            pickerInstance = new EmojiMart.Picker(pickerOptions);
-            container.appendChild(pickerInstance);
         }
         container.classList.remove('hidden');
     }
