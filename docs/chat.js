@@ -393,8 +393,15 @@ DOM.loginForm.addEventListener('submit', (e) => {
 });
 
 // ═══ COLOR PICKER ═══
+// ═══ COLOR PICKER ═══
 let colorPickerInstance = null;
-const userColor = localStorage.getItem('chat_color') || '#ffffff'; // Default or stored
+let userColor = '#ffffff';
+
+try {
+    userColor = localStorage.getItem('chat_color') || '#ffffff';
+} catch (e) {
+    console.warn('LocalStorage access blocked', e);
+}
 
 // Set initial button color
 if (DOM.btnColor) {
@@ -437,7 +444,9 @@ function setupColorPicker() {
             colorPickerInstance.on('color:change', function (color) {
                 const newColor = color.hexString;
                 btnColor.style.backgroundColor = newColor;
-                localStorage.setItem('chat_color', newColor);
+                try {
+                    localStorage.setItem('chat_color', newColor);
+                } catch (e) { /* ignore */ }
 
                 // Send update to server
                 if (ws && ws.readyState === WebSocket.OPEN) {
