@@ -38,7 +38,7 @@ function connectWebSocket(roomId) {
     ws.addEventListener('open', () => {
         console.log(`connected to ${roomId}`);
         isSwitchingRoom = false;
-        if (currentUsername) {
+        if (currentUsername && currentWalletAddress) {
             const joinMsg = {
                 type: 'join',
                 username: currentUsername,

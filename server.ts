@@ -111,11 +111,15 @@ export default class NekoChat implements Party.Server {
   }
 
   private async isWhitelisted(wallet: string): Promise<boolean> {
+    const owner = this.getOwnerWallet();
     const admins = await this.getAllAdminWallets();
+    const mods = await this.getStoredModWallets();
     const envMembers = this.getMemberWallets();
     const storedMembers = await this.getStoredMemberWallets();
     return (
+      wallet === owner ||
       admins.includes(wallet) ||
+      mods.includes(wallet) ||
       envMembers.includes(wallet) ||
       storedMembers.includes(wallet)
     );
