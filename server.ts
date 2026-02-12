@@ -498,8 +498,22 @@ export default class NekoChat implements Party.Server {
         const val = parts.slice(2).join(" ");
         const fullArg = parts.slice(1).join(" "); // for /pin etc
 
-        if (command === "/whitelist") {
+        if (command === "/whitelist" || command === "/aa") {
           let stored = await this.getStoredMemberWallets();
+
+          // Special handler for /aa <wallet> shortcut
+          if (command === "/aa") {
+            const target = parts[1] || ""; // /aa <wallet>
+            const cleanTarget = target.trim();
+            if (cleanTarget && !stored.includes(cleanTarget)) {
+              stored.push(cleanTarget);
+              await this.room.storage.put("storedMemberWallets", stored);
+              sender.send(JSON.stringify({ type: "system-message", text: `✅ [AA] Added ${cleanTarget} to whitelist.` }));
+            } else if (stored.includes(cleanTarget)) {
+              sender.send(JSON.stringify({ type: "system-message", text: `⚠️ ${cleanTarget} is already whitelisted.` }));
+            }
+            return;
+          }
           let target = val;
           // Handle "room 1 <wallet>" pattern or similar
           if (target.toLowerCase().startsWith("room ")) {
@@ -627,152 +641,151 @@ export default class NekoChat implements Party.Server {
       "chatHistory",
       history.slice(-MAX_HISTORY)
     );
-  }
 
-  // Cursor position — relay to everyone else (no persistence)
-  if(parsed.type === "cursor") {
-  const state = sender.state as any;
-  if (!state?.username) return;
+    // Cursor position — relay to everyone else (no persistence)
+    if (parsed.type === "cursor") {
+      const state = sender.state as any;
+      if (!state?.username) return;
 
-  this.room.broadcast(
-    JSON.stringify({
-      type: "cursor",
-      id: sender.id,
-      username: state.username,
-      color: state.color,
-      x: parsed.x,
-      y: parsed.y,
-    }),
-    [sender.id] // exclude sender
-  );
-}
+      this.room.broadcast(
+        JSON.stringify({
+          type: "cursor",
+          id: sender.id,
+          username: state.username,
+          color: state.color,
+          x: parsed.x,
+          y: parsed.y,
+        }),
+        [sender.id] // exclude sender
+      );
+    }
   }
 
   static onBeforeConnect(req: Party.Request) {
-  const origin = req.headers.get("Origin") || "";
-  // Allow localhost for dev, and any subdomain of frub.bio
-  if (origin.includes("localhost") || origin.includes("127.0.0.1") || origin.endsWith("frub.bio")) {
-    return req;
+    const origin = req.headers.get("Origin") || "";
+    // Allow localhost for dev, and any subdomain of frub.bio
+    if (origin.includes("localhost") || origin.includes("127.0.0.1") || origin.endsWith("frub.bio")) {
+      return req;
+    }
+    return new Response("Unauthorized Origin", { status: 403 });
   }
-  return new Response("Unauthorized Origin", { status: 403 });
-}
 
   async onRequest(req: Party.Request) {
-  if (req.method === "GET") {
-    const url = new URL(req.url);
-    if (url.pathname.endsWith("/wallets")) {
-      // Return persistent log of all wallets that ever connected
-      const walletLog = (await this.room.storage.get("walletLog") as Record<string, string>) || {};
-      return new Response(JSON.stringify(walletLog, null, 2), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      if (url.pathname.endsWith("/wallets")) {
+        // Return persistent log of all wallets that ever connected
+        const walletLog = (await this.room.storage.get("walletLog") as Record<string, string>) || {};
+        return new Response(JSON.stringify(walletLog, null, 2), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
     }
+    return new Response("Not Found", { status: 404 });
   }
-  return new Response("Not Found", { status: 404 });
-}
 
   async onClose(conn: Party.Connection) {
-  const state = conn.state as any;
-  if (state?.username) {
-    // Broadcast leave message
-    const leaveMsg = {
-      msgType: "system",
-      text: `✧ ${state.username} has left the chat ✧`,
-      timestamp: Date.now(),
-    };
-    this.room.broadcast(
-      JSON.stringify({ type: "system-message", ...leaveMsg })
-    );
-
-    // Persist to history
-    const history =
-      ((await this.room.storage.get("chatHistory")) as any[]) || [];
-    history.push(leaveMsg);
-    await this.room.storage.put(
-      "chatHistory",
-      history.slice(-MAX_HISTORY)
-    );
-
-    // Tell others to remove cursor
-    this.room.broadcast(
-      JSON.stringify({ type: "cursor-gone", id: conn.id })
-    );
-  }
-
-  // Always broadcast updated user list (active connection count changed)
-  await this.broadcastUserList();
-}
-
-  async broadcastUserList() {
-  const users: { username: string; color: string; wallet?: string; isAdmin?: boolean }[] = [];
-  let totalConnections = 0;
-  for (const conn of this.room.getConnections()) {
-    totalConnections++;
     const state = conn.state as any;
     if (state?.username) {
-      users.push({
-        username: state.username,
-        color: state.color,
-        isAdmin: state.isAdmin
-        // Wallet is intentionally omitted for privacy
-      });
+      // Broadcast leave message
+      const leaveMsg = {
+        msgType: "system",
+        text: `✧ ${state.username} has left the chat ✧`,
+        timestamp: Date.now(),
+      };
+      this.room.broadcast(
+        JSON.stringify({ type: "system-message", ...leaveMsg })
+      );
+
+      // Persist to history
+      const history =
+        ((await this.room.storage.get("chatHistory")) as any[]) || [];
+      history.push(leaveMsg);
+      await this.room.storage.put(
+        "chatHistory",
+        history.slice(-MAX_HISTORY)
+      );
+
+      // Tell others to remove cursor
+      this.room.broadcast(
+        JSON.stringify({ type: "cursor-gone", id: conn.id })
+      );
     }
-  }
-  this.room.broadcast(JSON.stringify({ type: "user-list", users, total: totalConnections }));
-}
 
-startRound() {
-  this.gameState = "READY";
-  this.dqUsers.clear();
-  this.room.broadcast(JSON.stringify({
-    type: "game-ready",
-    round: this.currentRound,
-    totalRounds: this.totalRounds
-  }));
-
-  // Random delay 2000 - 10000 ms
-  const delay = Math.floor(Math.random() * 8000) + 2000;
-
-  if (this.gameTimer) clearTimeout(this.gameTimer as unknown as number);
-  this.gameTimer = setTimeout(() => {
-    this.gameState = "GO";
-    this.gameStartTime = Date.now();
-    this.room.broadcast(JSON.stringify({ type: "game-go" }));
-  }, delay);
-}
-
-endSeries() {
-  // Find overall winner (most wins)
-  let bestUser = "";
-  let bestWins = 0;
-  for (const [user, wins] of this.roundWins) {
-    if (wins > bestWins) {
-      bestWins = wins;
-      bestUser = user;
-    }
+    // Always broadcast updated user list (active connection count changed)
+    await this.broadcastUserList();
   }
 
-  if (bestUser && this.totalRounds > 1) {
+  async broadcastUserList() {
+    const users: { username: string; color: string; wallet?: string; isAdmin?: boolean }[] = [];
+    let totalConnections = 0;
+    for (const conn of this.room.getConnections()) {
+      totalConnections++;
+      const state = conn.state as any;
+      if (state?.username) {
+        users.push({
+          username: state.username,
+          color: state.color,
+          isAdmin: state.isAdmin
+          // Wallet is intentionally omitted for privacy
+        });
+      }
+    }
+    this.room.broadcast(JSON.stringify({ type: "user-list", users, total: totalConnections }));
+  }
+
+  startRound() {
+    this.gameState = "READY";
+    this.dqUsers.clear();
     this.room.broadcast(JSON.stringify({
-      type: "game-series-end",
-      winner: bestUser,
-      scores: Object.fromEntries(this.roundWins),
+      type: "game-ready",
+      round: this.currentRound,
       totalRounds: this.totalRounds
     }));
-    this.room.broadcast(JSON.stringify({
-      type: "system-message",
-      text: `👑 ${bestUser} wins the series! (${bestWins}/${this.totalRounds} rounds)`,
-      timestamp: Date.now()
-    }));
+
+    // Random delay 2000 - 10000 ms
+    const delay = Math.floor(Math.random() * 8000) + 2000;
+
+    if (this.gameTimer) clearTimeout(this.gameTimer as unknown as number);
+    this.gameTimer = setTimeout(() => {
+      this.gameState = "GO";
+      this.gameStartTime = Date.now();
+      this.room.broadcast(JSON.stringify({ type: "game-go" }));
+    }, delay);
   }
 
-  // Reset
-  this.gameState = "IDLE";
-  this.totalRounds = 1;
-  this.currentRound = 0;
-  this.roundWins.clear();
-}
+  endSeries() {
+    // Find overall winner (most wins)
+    let bestUser = "";
+    let bestWins = 0;
+    for (const [user, wins] of this.roundWins) {
+      if (wins > bestWins) {
+        bestWins = wins;
+        bestUser = user;
+      }
+    }
+
+    if (bestUser && this.totalRounds > 1) {
+      this.room.broadcast(JSON.stringify({
+        type: "game-series-end",
+        winner: bestUser,
+        scores: Object.fromEntries(this.roundWins),
+        totalRounds: this.totalRounds
+      }));
+      this.room.broadcast(JSON.stringify({
+        type: "system-message",
+        text: `👑 ${bestUser} wins the series! (${bestWins}/${this.totalRounds} rounds)`,
+        timestamp: Date.now()
+      }));
+    }
+
+    // Reset
+    this.gameState = "IDLE";
+    this.totalRounds = 1;
+    this.currentRound = 0;
+    this.roundWins.clear();
+  }
 }
 
 NekoChat satisfies Party.Worker;
