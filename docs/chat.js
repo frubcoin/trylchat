@@ -9,7 +9,6 @@ const WS_PROTOCOL = isLocal ? "ws" : "wss";
 
 // ═══ SOLANA / TOKEN GATING ═══
 const TOKEN_MINT = "UwU8RVXB69Y6Dcju6cN2Qef6fykkq6UUNpB15rZku6Z";
-let tokenCheckResolve = null; // For server-proxied token check
 
 const ROOMS = [
     { id: 'main-lobby', name: 'lobby', icon: '✦', gated: false },
@@ -89,15 +88,6 @@ function connectWebSocket(roomId) {
                 break;
             case 'cursor-gone':
                 removeRemoteCursor(data.id);
-                break;
-            case 'token-result':
-                console.log('[TOKEN] Server result:', data.hasToken);
-                hasToken = !!data.hasToken;
-                if (tokenCheckResolve) {
-                    tokenCheckResolve(hasToken);
-                    tokenCheckResolve = null;
-                }
-                renderRoomList();
                 break;
             case 'join-error':
                 console.error('[JOIN-ERROR]', data.reason);
@@ -220,28 +210,33 @@ const COMMANDS = [
     '/unpin'
 ];
 
-// ═══ TOKEN CHECK (server-proxied) ═══
+// ═══ TOKEN CHECK (public RPC, no API key needed) ═══
 async function checkTokenBalance(walletAddress) {
     try {
-        console.log('[TOKEN] Checking via server for', walletAddress);
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            console.warn('[TOKEN] WebSocket not open, cannot check token');
-            return false;
-        }
-        // Send check-token request and wait for token-result response
-        const result = await new Promise((resolve) => {
-            tokenCheckResolve = resolve;
-            ws.send(JSON.stringify({ type: 'check-token', wallet: walletAddress }));
-            // Timeout after 10s
-            setTimeout(() => {
-                if (tokenCheckResolve) {
-                    tokenCheckResolve(false);
-                    tokenCheckResolve = null;
-                }
-            }, 10000);
+        console.log('[TOKEN] Checking balance for', walletAddress);
+        const response = await fetch('https://api.mainnet-beta.solana.com', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'getTokenAccountsByOwner',
+                params: [
+                    walletAddress,
+                    { mint: TOKEN_MINT },
+                    { encoding: 'jsonParsed' }
+                ]
+            })
         });
-        console.log('[TOKEN] Server check result:', result);
-        return result;
+        const data = await response.json();
+        console.log('[TOKEN] Response:', JSON.stringify(data).substring(0, 300));
+        if (data.result && data.result.value && data.result.value.length > 0) {
+            for (const account of data.result.value) {
+                const amount = account.account.data.parsed.info.tokenAmount.uiAmount;
+                if (amount > 0) return true;
+            }
+        }
+        return false;
     } catch (err) {
         console.error('[TOKEN] Check failed:', err);
         return false;
