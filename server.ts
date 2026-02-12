@@ -100,6 +100,32 @@ export default class NekoChat implements Party.Server {
     return (await this.room.storage.get<string[]>("storedModWallets")) || [];
   }
 
+  private async getStoredUrlPermissionWallets(): Promise<string[]> {
+    return (await this.room.storage.get<string[]>("storedUrlPermissionWallets")) || [];
+  }
+
+  private hasUrlInText(text: string): boolean {
+    return /(https?:\/\/[^\s]+)/i.test(text);
+  }
+
+  private async canShareUrl(wallet: string | null | undefined, isAdmin: boolean, isMod: boolean, isOwner: boolean): Promise<boolean> {
+    if (!wallet) return false;
+    if (isAdmin || isMod || isOwner) return true;
+    const allowed = await this.getStoredUrlPermissionWallets();
+    return allowed.includes(wallet);
+  }
+
+  private async broadcastTypingUsers() {
+    const typingUsers: string[] = [];
+    for (const conn of this.room.getConnections()) {
+      const state = conn.state as any;
+      if (state?.username && state?.isTyping) {
+        typingUsers.push(state.username);
+      }
+    }
+    this.room.broadcast(JSON.stringify({ type: "typing-users", users: typingUsers }));
+  }
+
   private async getAllAdminWallets(): Promise<string[]> {
     const envAdmins = this.getAdminWallets();
     const storedAdmins = await this.getStoredAdminWallets();
@@ -336,7 +362,8 @@ export default class NekoChat implements Party.Server {
       const isMod = allMods.includes(wallet);
       const isOwner = wallet === ownerWallet;
 
-      sender.setState({ username, color, wallet, isAdmin, isMod, isOwner });
+            const canEmbedUrls = await this.canShareUrl(wallet, isAdmin, isMod, isOwner);
+      sender.setState({ username, color, wallet, isAdmin, isMod, isOwner, canEmbedUrls, isTyping: false });
 
       if (isAdmin || isMod || isOwner) {
         sender.send(JSON.stringify({ type: "admin-mode" }));
@@ -508,8 +535,17 @@ export default class NekoChat implements Party.Server {
       return;
     }
 
+    if (parsed.type === "typing") {
+      const state = sender.state as any;
+      if (!state?.username) return;
+      sender.setState({ ...state, isTyping: !!parsed.isTyping });
+      await this.broadcastTypingUsers();
+      return;
+    }
+
     if (parsed.type === "chat") {
-      const { username, color, isAdmin, isMod, isOwner } = sender.state as {
+      const { username, color, isAdmin, isMod, isOwner, wallet } = sender.state as {
+        wallet?: string;
         username: string;
         color: string;
         isAdmin: boolean;
@@ -628,6 +664,38 @@ export default class NekoChat implements Party.Server {
 
             sender.send(JSON.stringify({ type: "system-message", text: `❌ Removed ADMIN: ${cleanTarget}` }));
           }
+          return;
+        }
+
+        if (command === "/permission") {
+          if (subCommand !== "url") {
+            sender.send(JSON.stringify({ type: "system-message", text: "Usage: /permission url <wallet>" }));
+            return;
+          }
+
+          const target = (parts[2] || "").trim();
+          if (!target) {
+            sender.send(JSON.stringify({ type: "system-message", text: "Usage: /permission url <wallet>" }));
+            return;
+          }
+
+          const storedPermissions = await this.getStoredUrlPermissionWallets();
+          if (storedPermissions.includes(target)) {
+            sender.send(JSON.stringify({ type: "system-message", text: `⚠️ URL permission already granted: ${target}` }));
+            return;
+          }
+
+          storedPermissions.push(target);
+          await this.room.storage.put("storedUrlPermissionWallets", storedPermissions);
+
+          for (const conn of this.room.getConnections()) {
+            const state = conn.state as any;
+            if (state && state.wallet === target) {
+              conn.setState({ ...state, canEmbedUrls: true });
+            }
+          }
+
+          sender.send(JSON.stringify({ type: "system-message", text: `✅ URL embed permission granted to ${target}` }));
           return;
         }
 
@@ -768,6 +836,15 @@ export default class NekoChat implements Party.Server {
 
       if (!text) return;
 
+      const canEmbedUrls = await this.canShareUrl(wallet, isAdmin, isMod, isOwner);
+      if (this.hasUrlInText(text) && !canEmbedUrls) {
+        sender.send(JSON.stringify({
+          type: "system-message",
+          text: "🔒 URL sharing is limited to Owner/Admin/Mod unless granted with /permission url <wallet>."
+        }));
+        return;
+      }
+
       const now = Date.now();
       const timestamps = this.rateLimits.get(sender.id) || [];
       // Filter out timestamps outside the window
@@ -797,6 +874,7 @@ export default class NekoChat implements Party.Server {
         isAdmin,
         isMod,
         isOwner,
+        canEmbedUrls,
         timestamp: Date.now(),
       };
 
@@ -886,6 +964,11 @@ export default class NekoChat implements Party.Server {
         JSON.stringify({ type: "cursor-gone", id: conn.id })
       );
     }
+
+    if ((conn.state as any)?.isTyping) {
+      conn.setState({ ...(conn.state as any), isTyping: false });
+    }
+    await this.broadcastTypingUsers();
 
     // Always broadcast updated user list (active connection count changed)
     await this.broadcastUserList();

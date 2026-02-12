@@ -29,6 +29,8 @@ function getWsUrl(roomId) {
 let ws;
 let reconnectTimer = null;
 let isSwitchingRoom = false;
+let typingTimeout = null;
+let isTyping = false;
 
 function connectWebSocket(roomId) {
     if (!roomId) roomId = currentRoom;
@@ -90,6 +92,9 @@ function connectWebSocket(roomId) {
                 break;
             case 'cursor-gone':
                 removeRemoteCursor(data.id);
+                break;
+            case 'typing-users':
+                updateTypingIndicator(data.users || []);
                 break;
             case 'join-error':
                 console.error('[JOIN-ERROR]', data.reason);
@@ -164,6 +169,7 @@ function connectWebSocket(roomId) {
         if (!isSwitchingRoom) {
             appendSystemMessage({ text: 'connection lost — reconnecting...', timestamp: Date.now() });
         }
+        sendTypingState(false);
         if (!reconnectTimer && !isSwitchingRoom) {
             reconnectTimer = setTimeout(() => { reconnectTimer = null; connectWebSocket(currentRoom); }, 2000);
         }
@@ -200,6 +206,7 @@ const DOM = {
     pinText: document.getElementById('pin-text'),
     roomList: document.getElementById('room-list'),
     walletAddressDisplay: document.getElementById('wallet-address-display'),
+    typingIndicator: document.getElementById('typing-indicator'),
     roomsSidebar: document.getElementById('rooms-sidebar'),
     sidebar: document.getElementById('sidebar'),
     sidebarBackdrop: document.getElementById('sidebar-backdrop'),
@@ -499,6 +506,7 @@ DOM.loginForm.addEventListener('submit', (e) => {
 
 // ═══ COLOR PICKER ═══
 let colorPickerInstance = null;
+let fallbackColorInput = null;
 let userColor = '#ffffff';
 
 // Make fallback function globally accessible
@@ -639,7 +647,57 @@ function setupColorPicker() {
         }
     });
 
+    function applyColor(newColor) {
+        userColor = newColor;
+        btnColor.style.backgroundColor = newColor;
+
+        try {
+            // Save to both generic and wallet-specific
+            localStorage.setItem('chat_color', newColor);
+            if (currentWalletAddress) {
+                localStorage.setItem(`chat_color_${currentWalletAddress}`, newColor);
+            }
+        } catch (e) { /* ignore */ }
+
+        // Send update to server
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'update-color',
+                color: newColor
+            }));
+        }
+    }
+
+    function mountFallbackPicker() {
+        if (fallbackColorInput) return;
+        fallbackColorInput = document.createElement('input');
+        fallbackColorInput.type = 'color';
+        fallbackColorInput.value = userColor;
+        fallbackColorInput.setAttribute('aria-label', 'Pick chat name color');
+        fallbackColorInput.addEventListener('input', (event) => {
+            applyColor(event.target.value);
+        });
+        popover.appendChild(fallbackColorInput);
+    }
+
     function showColorPicker() {
+        if (!colorPickerInstance && window.iro) {
+            colorPickerInstance = new iro.ColorPicker(popover, {
+                width: 150,
+                color: userColor,
+                layout: [
+                    { component: iro.ui.Wheel, options: {} },
+                ]
+            });
+
+            colorPickerInstance.on('color:change', function (color) {
+                applyColor(color.hexString);
+            });
+        } else if (!window.iro) {
+            mountFallbackPicker();
+            fallbackColorInput.value = userColor;
+        } else if (colorPickerInstance) {
+            colorPickerInstance.setColor(userColor);
         console.log('showColorPicker called, iro available:', !!window.iro);
         
         // Clear any existing outside click timeout
@@ -917,6 +975,19 @@ DOM.chatInput.addEventListener('keydown', (e) => {
     }
 });
 
+DOM.chatInput.addEventListener('input', () => {
+    const hasText = DOM.chatInput.value.trim().length > 0;
+    sendTypingState(hasText);
+
+    if (typingTimeout) clearTimeout(typingTimeout);
+    if (hasText) {
+        typingTimeout = setTimeout(() => {
+            sendTypingState(false);
+            typingTimeout = null;
+        }, 1500);
+    }
+});
+
 DOM.chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const msg = DOM.chatInput.value.trim();
@@ -932,11 +1003,92 @@ DOM.chatForm.addEventListener('submit', (e) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'chat', text: msg }));
     }
+    sendTypingState(false);
+    if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+    }
     DOM.chatInput.value = '';
     DOM.chatInput.focus();
 });
 
 // ═══ RENDER ═══
+function escapeHtml(value) {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function linkifyText(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    return escapeHtml(text).replace(urlRegex, (url) => {
+        const escapedUrl = escapeHtml(url);
+        return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
+    });
+}
+
+function getEmbedUrl(urlString) {
+    try {
+        const url = new URL(urlString);
+        const host = url.hostname.replace(/^www\./, '');
+
+        if ((host === 'youtube.com' || host === 'youtu.be')) {
+            const videoId = host === 'youtu.be'
+                ? url.pathname.slice(1)
+                : url.searchParams.get('v');
+            if (videoId) {
+                return {
+                    type: 'iframe',
+                    src: `https://www.youtube.com/embed/${encodeURIComponent(videoId)}`
+                };
+            }
+        }
+
+        if (/\.(png|jpe?g|gif|webp)$/i.test(url.pathname)) {
+            return { type: 'img', src: urlString };
+        }
+
+        if (/\.(mp4|webm)$/i.test(url.pathname)) {
+            return { type: 'video', src: urlString };
+        }
+    } catch (_) {
+        return null;
+    }
+
+    return null;
+}
+
+function updateTypingIndicator(users) {
+    if (!DOM.typingIndicator) return;
+
+    const activeUsers = users.filter((u) => u && u !== currentUsername);
+    if (activeUsers.length === 0) {
+        DOM.typingIndicator.classList.add('hidden');
+        DOM.typingIndicator.textContent = '';
+        return;
+    }
+
+    let label = '';
+    if (activeUsers.length === 1) label = `${activeUsers[0]} is typing…`;
+    else if (activeUsers.length === 2) label = `${activeUsers[0]} and ${activeUsers[1]} are typing…`;
+    else label = `${activeUsers[0]} and ${activeUsers.length - 1} others are typing…`;
+
+    DOM.typingIndicator.textContent = label;
+    DOM.typingIndicator.classList.remove('hidden');
+}
+
+function sendTypingState(nextState) {
+    if (isTyping === nextState) return;
+    isTyping = nextState;
+
+    if (ws && ws.readyState === WebSocket.OPEN && currentUsername) {
+        ws.send(JSON.stringify({ type: 'typing', isTyping: nextState }));
+    }
+}
+
 function formatTime(ts) {
     const d = new Date(ts);
     let h = d.getHours();
@@ -946,52 +1098,75 @@ function formatTime(ts) {
     return `${h}:${m} ${ampm}`;
 }
 
+async function getGoogleAiLanguageDetector() {
+    if (!window.ai?.languageDetector?.capabilities || !window.ai?.languageDetector?.create) {
+        return null;
+    }
+
+    const capabilities = await window.ai.languageDetector.capabilities();
+    if (!capabilities || capabilities.available === 'no') return null;
+
+    return window.ai.languageDetector.create();
+}
+
+async function getGoogleAiTranslator(sourceLang, targetLang) {
+    if (!sourceLang || !targetLang || sourceLang === targetLang) return null;
+    if (!window.ai?.translator?.capabilities || !window.ai?.translator?.create) {
+        return null;
+    }
+
+    const capabilities = await window.ai.translator.capabilities({
+        sourceLanguage: sourceLang,
+        targetLanguage: targetLang
+    });
+
+    if (!capabilities || capabilities.available === 'no') return null;
+
+    return window.ai.translator.create({
+        sourceLanguage: sourceLang,
+        targetLanguage: targetLang
+    });
+}
+
 async function translateText(text, targetLang) {
     if (!text || !targetLang) return null;
 
-    // --- TIER 1: Chrome Built-in AI APIs (Language Detection & Translation) ---
-    // (Available in Chrome with Gemini Nano)
-    if (window.ai && window.ai.languageDetector && window.ai.translator) {
-        try {
-            // Step 1: Detect Language
-            const detectorStatus = await window.ai.languageDetector.capabilities();
-            if (detectorStatus.available !== 'no') {
-                const detector = await window.ai.languageDetector.create();
-                const results = await detector.detect(text);
-                if (results && results.length > 0) {
-                    const detectedLang = results[0].detectedLanguage;
-                    console.log(`[TRANSLATION] Detected: ${detectedLang} (confidence: ${results[0].confidence})`);
+    // --- TIER 1: Google client-side AI APIs in Chrome (Gemini Nano) ---
+    try {
+        const detector = await getGoogleAiLanguageDetector();
+        let detectedLang = null;
 
-                    // If detected as the target language, skip
-                    if (detectedLang === targetLang) {
-                        console.log(`[TRANSLATION] Match target language (${targetLang}), skipping.`);
-                        return null;
-                    }
-                }
+        if (detector) {
+            const detections = await detector.detect(text);
+            if (Array.isArray(detections) && detections.length > 0) {
+                const top = detections[0];
+                detectedLang = top.detectedLanguage;
+                console.log(`[TRANSLATION] Google AI detected ${detectedLang} (${top.confidence})`);
             }
-
-            // Step 2: Translate
-            const translatorStatus = await window.ai.translator.capabilities();
-            if (translatorStatus.available !== 'no') {
-                console.log(`[TRANSLATION] Using Chrome AI Translator API`);
-                const translator = await window.ai.translator.create({
-                    sourceLanguage: 'auto', // Most models handle auto-detection internally too
-                    targetLanguage: targetLang
-                });
-                const result = await translator.translate(text);
-                if (result && result.trim().toLowerCase() !== text.trim().toLowerCase()) {
-                    return result;
-                }
-            }
-        } catch (err) {
-            console.warn('[TRANSLATION] Chrome AI APIs failed or not ready, falling back:', err);
         }
-    } else if (window.translation && typeof window.translation.canTranslate === 'function') {
-        // Fallback to older window.translation API if window.ai is not present
+
+        if (detectedLang && detectedLang === targetLang) {
+            return null;
+        }
+
+        if (detectedLang) {
+            const translator = await getGoogleAiTranslator(detectedLang, targetLang);
+            if (translator) {
+                const translated = await translator.translate(text);
+                if (translated && translated.trim().toLowerCase() !== text.trim().toLowerCase()) {
+                    return translated;
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('[TRANSLATION] Google client-side AI APIs failed, falling back:', err);
+    }
+
+    // --- TIER 2: Legacy browser translation API fallback ---
+    if (window.translation && typeof window.translation.canTranslate === 'function') {
         try {
             const status = await window.translation.canTranslate({ targetLanguage: targetLang });
             if (status !== 'no') {
-                console.log(`[TRANSLATION] Using window.translation API`);
                 const translator = await window.translation.createTranslator({ targetLanguage: targetLang });
                 const result = await translator.translate(text);
                 if (result && result.trim().toLowerCase() !== text.trim().toLowerCase()) {
@@ -1003,7 +1178,7 @@ async function translateText(text, targetLang) {
         }
     }
 
-    // --- TIER 2: Server-Side Translation (Bypasses CORS) ---
+    // --- TIER 3: Server-side translation fallback ---
     return new Promise((resolve) => {
         if (!ws || ws.readyState !== WebSocket.OPEN) return resolve(null);
 
@@ -1073,7 +1248,26 @@ async function appendChatMessage(data, isHistory = false) {
     }
 
     const unescapedText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-    div.querySelector('.msg-text').innerText = unescapedText;
+    const msgTextEl = div.querySelector('.msg-text');
+    msgTextEl.innerHTML = linkifyText(unescapedText);
+
+    const urls = unescapedText.match(/(https?:\/\/[^\s]+)/gi) || [];
+    const canEmbedUrls = !!(data.isOwner || data.isAdmin || data.isMod || data.canEmbedUrls);
+    if (canEmbedUrls && urls.length > 0) {
+        const embed = getEmbedUrl(urls[0]);
+        if (embed) {
+            const wrap = document.createElement('div');
+            wrap.className = 'msg-embed';
+            if (embed.type === 'iframe') {
+                wrap.innerHTML = `<iframe src="${embed.src}" loading="lazy" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+            } else if (embed.type === 'img') {
+                wrap.innerHTML = `<img src="${embed.src}" alt="embedded content" loading="lazy">`;
+            } else if (embed.type === 'video') {
+                wrap.innerHTML = `<video src="${embed.src}" controls preload="metadata"></video>`;
+            }
+            div.appendChild(wrap);
+        }
+    }
 
     DOM.chatMessages.appendChild(div);
 
