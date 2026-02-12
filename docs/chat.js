@@ -701,55 +701,27 @@ function setupColorPicker() {
     }
 
     function showColorPicker() {
-        if (!colorPickerInstance && window.iro) {
-            colorPickerInstance = new iro.ColorPicker(popover, {
-                width: 150,
-                color: userColor,
-                layout: [
-                    { component: iro.ui.Wheel, options: {} },
-                ]
-            });
-
-            colorPickerInstance.on('color:change', function (color) {
-                applyColor(color.hexString);
-            });
-        } else if (!window.iro) {
-            mountFallbackPicker();
-            fallbackColorInput.value = userColor;
-        } else if (colorPickerInstance) {
-            applyPickerColor(userColor);
-            colorPickerInstance.setColor(userColor);
         console.log('showColorPicker called, iro available:', !!window.iro);
-        
+
         // Clear any existing outside click timeout
         if (outsideClickTimeout) {
             clearTimeout(outsideClickTimeout);
         }
-        
-        // Check if iro is available, if not wait a bit and retry
+
         if (!window.iro) {
-            console.warn('IRO library not loaded yet, retrying...');
-            // Only retry a few times before falling back
-            if (!this.retryCount) this.retryCount = 0;
-            this.retryCount++;
-            
-            if (this.retryCount > 10) {
-                console.warn('IRO library failed to load, using fallback');
-                createFallbackColorPicker();
-                return;
-            }
-            
-            setTimeout(showColorPicker, 100);
+            mountFallbackPicker();
+            fallbackColorInput.value = userColor;
+            popover.classList.remove('hidden');
             return;
         }
 
         if (!colorPickerInstance) {
             try {
                 console.log('Creating color picker instance...');
-                
+
                 // Clear popover first
                 popover.innerHTML = '';
-                
+
                 colorPickerInstance = new iro.ColorPicker(popover, {
                     width: 150,
                     color: userColor,
@@ -760,36 +732,21 @@ function setupColorPicker() {
                 console.log('Color picker created successfully');
 
                 colorPickerInstance.on('color:change', function (color) {
-                    const newColor = color.hexString;
-                    userColor = newColor;
-                    newBtnColor.style.backgroundColor = newColor;
-
-                    try {
-                        // Save to both generic and wallet-specific
-                        localStorage.setItem('chat_color', newColor);
-                        if (currentWalletAddress) {
-                            localStorage.setItem(`chat_color_${currentWalletAddress}`, newColor);
-                        }
-                    } catch (e) { /* ignore */ }
-
-                    // Send update to server
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({
-                            type: 'update-color',
-                            color: newColor
-                        }));
-                    }
+                    applyColor(color.hexString);
                 });
             } catch (err) {
                 console.error('Failed to create color picker:', err);
                 // Fallback to simple HTML5 color input
-                createFallbackColorPicker();
-                return;
+                mountFallbackPicker();
+                fallbackColorInput.value = userColor;
             }
+        } else {
+            applyPickerColor(userColor);
         }
+
         console.log('Removing hidden class from popover');
         popover.classList.remove('hidden');
-        
+
         // Debug: Check if the picker is actually visible
         setTimeout(() => {
             const rect = popover.getBoundingClientRect();
@@ -800,7 +757,7 @@ function setupColorPicker() {
                 display: window.getComputedStyle(popover).display,
                 visibility: window.getComputedStyle(popover).visibility
             });
-            
+
             // Also check if iro created any elements inside
             const iroElements = popover.querySelectorAll('[class*="iro"]');
             console.log('IRO elements found:', iroElements.length);
