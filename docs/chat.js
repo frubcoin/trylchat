@@ -195,6 +195,7 @@ const DOM = {
     walletAddressDisplay: document.getElementById('wallet-address-display'),
     roomsSidebar: document.getElementById('rooms-sidebar'),
     sidebar: document.getElementById('sidebar'),
+    sidebarBackdrop: document.getElementById('sidebar-backdrop'),
 };
 
 let currentUsername = '';
@@ -1013,6 +1014,30 @@ function setupGestures() {
     }
 
     const region = new ZingTouch.Region(document.body);
+
+    // Unify Tapping for responsiveness (bypasses mobile click delay/hover quirks)
+    region.bind(document.body, 'tap', (e) => {
+        const target = e.detail.events[0].target;
+
+        // 1. Sidebar Backdrop (Click outside to close)
+        if (target.id === 'sidebar-backdrop') {
+            document.body.classList.remove('mobile-menu-active', 'mobile-users-active');
+            return;
+        }
+
+        // 2. Onboarding Buttons (Snappier response)
+        if (target.id === 'btn-phantom') {
+            connectWallet(false);
+            return;
+        }
+
+        if (target.closest('#login-form button[type="submit"]')) {
+            // Let standard submit handler handle it for now, 
+            // but we've ensured the tap is registered.
+            return;
+        }
+    });
+
     region.bind(document.body, 'swipe', (e) => {
         const data = e.detail.data[0];
         const angle = data.currentDirection; // 0 to 360
