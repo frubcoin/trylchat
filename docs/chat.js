@@ -20,6 +20,7 @@ let currentRoom = 'main-lobby';
 let hasToken = false;
 let currentSignature = null;
 let currentSignMsg = null;
+let currentWalletAddress = null;
 
 function getWsUrl(roomId) {
     return `${WS_PROTOCOL}://${PARTYKIT_HOST}/party/${roomId}`;
@@ -192,6 +193,7 @@ const DOM = {
     pinnedBanner: document.getElementById('pinned-banner'),
     pinText: document.getElementById('pin-text'),
     roomList: document.getElementById('room-list'),
+    walletAddressDisplay: document.getElementById('wallet-address-display'),
 };
 
 let currentUsername = '';
@@ -202,7 +204,7 @@ try {
     }
 } catch (e) { }
 
-let currentWalletAddress = null;
+// let currentWalletAddress = null; // Moved up to state section
 
 // Chat history tracking
 const sentHistory = [];
@@ -329,41 +331,105 @@ function switchRoom(roomId) {
 }
 
 // ═══ WALLET FLOW (Phantom only) ═══
-DOM.btnPhantom.addEventListener('click', async () => {
+
+async function updateWalletUI() {
+    if (!DOM.walletAddressDisplay) return;
+    if (currentWalletAddress) {
+        const short = currentWalletAddress.slice(0, 4) + '...' + currentWalletAddress.slice(-4);
+        DOM.walletAddressDisplay.textContent = `Wallet: ${short}`;
+        DOM.walletAddressDisplay.classList.remove('hidden');
+        DOM.btnPhantom.textContent = 'Sign & Enter →';
+        DOM.btnPhantom.style.background = '#00ff00'; // Green for connected/ready to sign
+    } else {
+        DOM.walletAddressDisplay.textContent = '';
+        DOM.walletAddressDisplay.classList.add('hidden');
+        DOM.btnPhantom.textContent = 'Connect Phantom';
+        DOM.btnPhantom.style.background = '#AB9FF2';
+    }
+}
+
+async function connectWallet(eager = false) {
     if (window.solana && window.solana.isPhantom) {
         try {
-            const resp = await window.solana.connect();
+            // Eager connect if trusted, otherwise standard connect
+            const resp = await window.solana.connect(eager ? { onlyIfTrusted: true } : {});
             currentWalletAddress = resp.publicKey.toString();
             console.log('[WALLET] Connected:', currentWalletAddress);
 
-            // Check token balance FIRST (before signing)
+            updateWalletUI();
+
+            // Check token balance
             hasToken = await checkTokenBalance(currentWalletAddress);
-            console.log('[WALLET] hasToken:', hasToken);
             renderRoomList();
 
-            // Then sign a message to prove wallet ownership
-            try {
-                const msg = 'Sign in to tryl.chat';
-                const encodedMsg = new TextEncoder().encode(msg);
-                const { signature } = await window.solana.signMessage(encodedMsg, 'utf8');
-                currentSignature = btoa(String.fromCharCode(...new Uint8Array(signature)));
-                currentSignMsg = msg;
-                console.log('[WALLET] Message signed successfully');
-            } catch (signErr) {
-                console.error('[WALLET] Sign failed:', signErr);
-                alert('Message signing is required to enter chat. Please try again and approve the signature.');
-                return;
-            }
+            // Add listeners (only once)
+            window.solana.off('accountChanged');
+            window.solana.off('disconnect');
+            window.solana.on('accountChanged', (publicKey) => {
+                if (publicKey) {
+                    console.log('[WALLET] Account changed:', publicKey.toBase58());
+                    currentWalletAddress = publicKey.toBase58();
+                    updateWalletUI();
+                    checkTokenBalance(currentWalletAddress).then(res => {
+                        hasToken = res;
+                        renderRoomList();
+                    });
+                } else {
+                    // This can happen if user disconnects from within Phantom
+                    handleWalletDisconnect();
+                }
+            });
+            window.solana.on('disconnect', handleWalletDisconnect);
 
-            goToStep2();
+            if (!eager) {
+                // If this was a manual click, we proceed to signing
+                await signToAccess();
+                goToStep2();
+            }
         } catch (err) {
-            console.error('[WALLET] Connect error:', err);
-            alert('Connection failed or rejected');
+            if (!eager) {
+                console.error('[WALLET] Connect error:', err);
+                alert('Connection failed or rejected');
+            }
         }
-    } else {
+    } else if (!eager) {
         alert('Phantom wallet not found! Please install it.');
         window.open('https://phantom.app/', '_blank');
     }
+}
+
+function handleWalletDisconnect() {
+    console.log('[WALLET] Disconnected');
+    currentWalletAddress = null;
+    currentSignature = null;
+    currentSignMsg = null;
+    hasToken = false;
+    updateWalletUI();
+    renderRoomList();
+    // Return to step 1
+    DOM.loginForm.classList.add('hidden');
+    DOM.stepWallet.classList.remove('hidden');
+}
+
+async function signToAccess() {
+    try {
+        const msg = 'Sign in to tryl.chat';
+        const encodedMsg = new TextEncoder().encode(msg);
+        const { signature } = await window.solana.signMessage(encodedMsg, 'utf8');
+        currentSignature = btoa(String.fromCharCode(...new Uint8Array(signature)));
+        currentSignMsg = msg;
+        console.log('[WALLET] Message signed successfully');
+    } catch (signErr) {
+        console.error('[WALLET] Sign failed:', signErr);
+        throw signErr; // Re-throw to caller
+    }
+}
+
+DOM.btnPhantom.addEventListener('click', () => connectWallet(false));
+
+// Check for eager connection on load
+window.addEventListener('load', () => {
+    connectWallet(true);
 });
 
 if (DOM.btnBack) {
