@@ -90,10 +90,9 @@ function connectWebSocket(roomId) {
                 break;
             case 'join-error':
                 console.error('[JOIN-ERROR]', data.reason);
+                isSwitchingRoom = false; // Reset so we can switch back
                 if (DOM.loginOverlay.classList.contains('hidden')) {
-                    // Already in chat — room switch error
                     const errorMsg = data.reason || 'Cannot access this room.';
-                    // Switch back first, then show the error (so it doesn't get cleared)
                     if (currentRoom !== 'main-lobby') {
                         switchRoom('main-lobby');
                         setTimeout(() => {
@@ -269,6 +268,7 @@ function renderRoomList() {
 
         li.addEventListener('click', async () => {
             if (room.id === currentRoom) return;
+            if (isSwitchingRoom) return; // Prevent clicks during room switch
 
             if (room.gated && !hasToken) {
                 // Re-check token balance for visual update, but always attempt the switch
@@ -287,6 +287,7 @@ function renderRoomList() {
 
 function switchRoom(roomId) {
     if (roomId === currentRoom && ws && ws.readyState === WebSocket.OPEN) return;
+    if (isSwitchingRoom) return; // Prevent re-entry
     isSwitchingRoom = true;
     currentRoom = roomId;
     DOM.chatMessages.innerHTML = '';
