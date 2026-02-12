@@ -122,10 +122,10 @@ export default class NekoChat implements Party.Server {
     }
 
     // Try multiple RPC endpoints — Helius returns 401 from CF Workers
-    const HELIUS_API_KEY = (this.room.env.HELIUS_API_KEY as string) || "cc4ba0bb-9e76-44be-8681-511665f1c262";
+    // const HELIUS_API_KEY = (this.room.env.HELIUS_API_KEY as string) || "cc4ba0bb-9e76-44be-8681-511665f1c262";
     const endpoints = [
-      "https://api.mainnet-beta.solana.com",
-      `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+      `https://mainnet.helius-rpc.com/?api-key=cc4ba0bb-9e76-44be-8681-511665f1c262`,
+      "https://api.mainnet-beta.solana.com"
     ];
 
     const body = JSON.stringify({
