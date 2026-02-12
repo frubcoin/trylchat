@@ -549,6 +549,9 @@ body {
   font-weight: 700;
   vertical-align: middle;
   letter-spacing: 0.5px;
+  min-width: 45px;
+  text-align: center;
+  display: inline-block;
 }
 
 .admin-badge {
@@ -560,6 +563,9 @@ body {
   font-weight: 700;
   vertical-align: middle;
   letter-spacing: 0.5px;
+  min-width: 45px;
+  text-align: center;
+  display: inline-block;
 }
 
 .mod-badge {
@@ -571,6 +577,9 @@ body {
   font-weight: 700;
   vertical-align: middle;
   letter-spacing: 0.5px;
+  min-width: 45px;
+  text-align: center;
+  display: inline-block;
 }
 
 .chat-msg .msg-time {

@@ -804,7 +804,6 @@ export default class NekoChat implements Party.Server {
       };
 
       // Broadcast to everyone
-      console.log("[BROADCAST] msgData:", JSON.stringify(msgData));
       this.room.broadcast(
         JSON.stringify({ type: "chat-message", ...msgData })
       );
@@ -896,7 +895,7 @@ export default class NekoChat implements Party.Server {
   }
 
   async broadcastUserList() {
-    const users: { username: string; color: string; wallet?: string; isAdmin?: boolean }[] = [];
+    const users: { username: string; color: string; wallet?: string; isAdmin?: boolean; isMod?: boolean; isOwner?: boolean }[] = [];
     let totalConnections = 0;
     for (const conn of this.room.getConnections()) {
       totalConnections++;
