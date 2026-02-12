@@ -363,6 +363,7 @@ async function connectWallet(eager = false) {
             currentWalletAddress = resp.publicKey.toString();
             console.log('[WALLET] Connected:', currentWalletAddress);
 
+            loadWalletColor(currentWalletAddress);
             updateWalletUI();
 
             // Check token balance
@@ -376,6 +377,7 @@ async function connectWallet(eager = false) {
                 if (publicKey) {
                     console.log('[WALLET] Account changed:', publicKey.toBase58());
                     currentWalletAddress = publicKey.toBase58();
+                    loadWalletColor(currentWalletAddress);
                     updateWalletUI();
                     checkTokenBalance(currentWalletAddress).then(res => {
                         hasToken = res;
@@ -467,7 +469,8 @@ DOM.loginForm.addEventListener('submit', (e) => {
             username: name,
             wallet: currentWalletAddress,
             signature: currentSignature,
-            signMessage: currentSignMsg
+            signMessage: currentSignMsg,
+            color: userColor
         }));
     }
     DOM.loginOverlay.classList.add('hidden');
@@ -477,17 +480,36 @@ DOM.loginForm.addEventListener('submit', (e) => {
 });
 
 // ═══ COLOR PICKER ═══
-// ═══ COLOR PICKER ═══
 let colorPickerInstance = null;
 let userColor = '#ffffff';
 
-try {
-    userColor = localStorage.getItem('chat_color') || '#ffffff';
-} catch (e) {
-    console.warn('LocalStorage access blocked', e);
+function loadWalletColor(wallet) {
+    if (!wallet) return;
+    try {
+        const saved = localStorage.getItem(`chat_color_${wallet}`);
+        if (saved && /^#[0-9A-F]{6}$/i.test(saved)) {
+            userColor = saved;
+        } else {
+            // Fallback to generic if no wallet-specific color
+            userColor = localStorage.getItem('chat_color') || '#ffffff';
+        }
+
+        if (DOM.btnColor) {
+            DOM.btnColor.style.backgroundColor = userColor;
+        }
+        if (colorPickerInstance) {
+            colorPickerInstance.setColor(userColor);
+        }
+    } catch (e) {
+        console.warn('LocalStorage access blocked', e);
+    }
 }
 
-// Set initial button color
+// Set initial color from generic if no wallet yet
+try {
+    userColor = localStorage.getItem('chat_color') || '#ffffff';
+} catch (e) { }
+
 if (DOM.btnColor) {
     DOM.btnColor.style.backgroundColor = userColor;
 }
@@ -527,10 +549,15 @@ function setupColorPicker() {
 
             colorPickerInstance.on('color:change', function (color) {
                 const newColor = color.hexString;
-                userColor = newColor; // Update the variable for future room joins
+                userColor = newColor;
                 btnColor.style.backgroundColor = newColor;
+
                 try {
+                    // Save to both generic and wallet-specific
                     localStorage.setItem('chat_color', newColor);
+                    if (currentWalletAddress) {
+                        localStorage.setItem(`chat_color_${currentWalletAddress}`, newColor);
+                    }
                 } catch (e) { /* ignore */ }
 
                 // Send update to server
