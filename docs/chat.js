@@ -29,6 +29,8 @@ function getWsUrl(roomId) {
 let ws;
 let reconnectTimer = null;
 let isSwitchingRoom = false;
+let typingTimeout = null;
+let isTyping = false;
 
 function connectWebSocket(roomId) {
     if (!roomId) roomId = currentRoom;
@@ -90,6 +92,9 @@ function connectWebSocket(roomId) {
                 break;
             case 'cursor-gone':
                 removeRemoteCursor(data.id);
+                break;
+            case 'typing-users':
+                updateTypingIndicator(data.users || []);
                 break;
             case 'join-error':
                 console.error('[JOIN-ERROR]', data.reason);
@@ -164,6 +169,7 @@ function connectWebSocket(roomId) {
         if (!isSwitchingRoom) {
             appendSystemMessage({ text: 'connection lost — reconnecting...', timestamp: Date.now() });
         }
+        sendTypingState(false);
         if (!reconnectTimer && !isSwitchingRoom) {
             reconnectTimer = setTimeout(() => { reconnectTimer = null; connectWebSocket(currentRoom); }, 2000);
         }
@@ -200,6 +206,7 @@ const DOM = {
     pinText: document.getElementById('pin-text'),
     roomList: document.getElementById('room-list'),
     walletAddressDisplay: document.getElementById('wallet-address-display'),
+    typingIndicator: document.getElementById('typing-indicator'),
     roomsSidebar: document.getElementById('rooms-sidebar'),
     sidebar: document.getElementById('sidebar'),
     sidebarBackdrop: document.getElementById('sidebar-backdrop'),
@@ -732,6 +739,19 @@ DOM.chatInput.addEventListener('keydown', (e) => {
     }
 });
 
+DOM.chatInput.addEventListener('input', () => {
+    const hasText = DOM.chatInput.value.trim().length > 0;
+    sendTypingState(hasText);
+
+    if (typingTimeout) clearTimeout(typingTimeout);
+    if (hasText) {
+        typingTimeout = setTimeout(() => {
+            sendTypingState(false);
+            typingTimeout = null;
+        }, 1500);
+    }
+});
+
 DOM.chatForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const msg = DOM.chatInput.value.trim();
@@ -747,11 +767,92 @@ DOM.chatForm.addEventListener('submit', (e) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'chat', text: msg }));
     }
+    sendTypingState(false);
+    if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+    }
     DOM.chatInput.value = '';
     DOM.chatInput.focus();
 });
 
 // ═══ RENDER ═══
+function escapeHtml(value) {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function linkifyText(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    return escapeHtml(text).replace(urlRegex, (url) => {
+        const escapedUrl = escapeHtml(url);
+        return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
+    });
+}
+
+function getEmbedUrl(urlString) {
+    try {
+        const url = new URL(urlString);
+        const host = url.hostname.replace(/^www\./, '');
+
+        if ((host === 'youtube.com' || host === 'youtu.be')) {
+            const videoId = host === 'youtu.be'
+                ? url.pathname.slice(1)
+                : url.searchParams.get('v');
+            if (videoId) {
+                return {
+                    type: 'iframe',
+                    src: `https://www.youtube.com/embed/${encodeURIComponent(videoId)}`
+                };
+            }
+        }
+
+        if (/\.(png|jpe?g|gif|webp)$/i.test(url.pathname)) {
+            return { type: 'img', src: urlString };
+        }
+
+        if (/\.(mp4|webm)$/i.test(url.pathname)) {
+            return { type: 'video', src: urlString };
+        }
+    } catch (_) {
+        return null;
+    }
+
+    return null;
+}
+
+function updateTypingIndicator(users) {
+    if (!DOM.typingIndicator) return;
+
+    const activeUsers = users.filter((u) => u && u !== currentUsername);
+    if (activeUsers.length === 0) {
+        DOM.typingIndicator.classList.add('hidden');
+        DOM.typingIndicator.textContent = '';
+        return;
+    }
+
+    let label = '';
+    if (activeUsers.length === 1) label = `${activeUsers[0]} is typing…`;
+    else if (activeUsers.length === 2) label = `${activeUsers[0]} and ${activeUsers[1]} are typing…`;
+    else label = `${activeUsers[0]} and ${activeUsers.length - 1} others are typing…`;
+
+    DOM.typingIndicator.textContent = label;
+    DOM.typingIndicator.classList.remove('hidden');
+}
+
+function sendTypingState(nextState) {
+    if (isTyping === nextState) return;
+    isTyping = nextState;
+
+    if (ws && ws.readyState === WebSocket.OPEN && currentUsername) {
+        ws.send(JSON.stringify({ type: 'typing', isTyping: nextState }));
+    }
+}
+
 function formatTime(ts) {
     const d = new Date(ts);
     let h = d.getHours();
@@ -911,7 +1012,26 @@ async function appendChatMessage(data, isHistory = false) {
     }
 
     const unescapedText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-    div.querySelector('.msg-text').innerText = unescapedText;
+    const msgTextEl = div.querySelector('.msg-text');
+    msgTextEl.innerHTML = linkifyText(unescapedText);
+
+    const urls = unescapedText.match(/(https?:\/\/[^\s]+)/gi) || [];
+    const canEmbedUrls = !!(data.isOwner || data.isAdmin || data.isMod || data.canEmbedUrls);
+    if (canEmbedUrls && urls.length > 0) {
+        const embed = getEmbedUrl(urls[0]);
+        if (embed) {
+            const wrap = document.createElement('div');
+            wrap.className = 'msg-embed';
+            if (embed.type === 'iframe') {
+                wrap.innerHTML = `<iframe src="${embed.src}" loading="lazy" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+            } else if (embed.type === 'img') {
+                wrap.innerHTML = `<img src="${embed.src}" alt="embedded content" loading="lazy">`;
+            } else if (embed.type === 'video') {
+                wrap.innerHTML = `<video src="${embed.src}" controls preload="metadata"></video>`;
+            }
+            div.appendChild(wrap);
+        }
+    }
 
     DOM.chatMessages.appendChild(div);
 
