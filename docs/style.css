@@ -56,31 +56,6 @@ body {
   max-width: 100vw;
 }
 
-.icon-btn {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0;
-  flex-shrink: 0;
-}
-
-.icon-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--text-muted);
-}
-
-.icon-btn:active {
-  transform: scale(0.95);
-}
-
 .hidden {
   display: none !important;
 }
