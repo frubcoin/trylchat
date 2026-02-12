@@ -1109,6 +1109,26 @@ body {
   #sidebar,
   #rooms-sidebar {
     display: none;
+    position: fixed;
+    top: 52px;
+    /* Below header */
+    bottom: 0;
+    background: var(--bg-elevated);
+    z-index: 1000;
+    width: 280px;
+    border: none;
+  }
+
+  body.mobile-menu-active #rooms-sidebar {
+    display: flex !important;
+    left: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  body.mobile-users-active #sidebar {
+    display: flex !important;
+    right: 0;
+    border-left: 1px solid var(--border);
   }
 
   #site-header {
