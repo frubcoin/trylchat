@@ -686,7 +686,13 @@ body {
 }
 
 .btn-send:hover {
-  opacity: 0.85;
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+}
+
+.btn-send:active {
+  transform: translateY(0);
 }
 
 /* ═══ ROOMS SIDEBAR (LEFT) ═══ */
