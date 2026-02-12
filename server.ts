@@ -78,10 +78,9 @@ const MAX_MESSAGES_PER_WINDOW = 5;
 type GameState = "IDLE" | "READY" | "GO";
 
 export default class NekoChat implements Party.Server {
-  private async getAdminWallets(): Promise<string[]> {
-    const envAdmins = ((this.room.env.ADMIN_WALLETS as string) || "").split(",").map(w => w.trim()).filter(Boolean);
-    const storedAdmins = (await this.room.storage.get<string[]>("storedAdminWallets")) || [];
-    return [...new Set([...envAdmins, ...storedAdmins])];
+  private getAdminWallets(): string[] {
+    const adminWallets = (this.room.env.ADMIN_WALLETS as string) || "";
+    return adminWallets.split(",").map(w => w.trim()).filter(Boolean);
   }
 
   private getMemberWallets(): string[] {
@@ -94,7 +93,7 @@ export default class NekoChat implements Party.Server {
   }
 
   private async isWhitelisted(wallet: string): Promise<boolean> {
-    const admins = await this.getAdminWallets();
+    const admins = this.getAdminWallets();
     const envMembers = this.getMemberWallets();
     const storedMembers = await this.getStoredMemberWallets();
     return (
@@ -557,27 +556,6 @@ export default class NekoChat implements Party.Server {
         } else {
           this.mutedUsers.add(target);
           sender.send(JSON.stringify({ type: "system-message", text: `🔇 Muted ${target}.` }));
-        }
-        return;
-      }
-
-      if (command === "/admin" && subCommand === "add") {
-        const target = val;
-        // Verify target is a valid string/wallet if needed, for now just non-empty
-        if (!target) {
-          sender.send(JSON.stringify({ type: "system-message", text: "⚠️ Usage: /admin add <wallet>" }));
-          return;
-        }
-
-        const admins = await this.getAdminWallets();
-        const storedAdmins = (await this.room.storage.get<string[]>("storedAdminWallets")) || [];
-
-        if (!admins.includes(target)) {
-          storedAdmins.push(target);
-          await this.room.storage.put("storedAdminWallets", storedAdmins);
-          sender.send(JSON.stringify({ type: "system-message", text: `✅ Added ${target} as admin.` }));
-        } else {
-          sender.send(JSON.stringify({ type: "system-message", text: `⚠️ ${target} is already an admin.` }));
         }
         return;
       }
