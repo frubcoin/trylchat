@@ -103,7 +103,7 @@ export default class NekoChat implements Party.Server {
     );
   }
 
-  private async verifyTokenHolder(wallet: string): Promise<boolean> {
+  private async verifyTokenHolder(wallet: string): Promise<{ ok: boolean; detail: string }> {
     const HELIUS_API_KEY = (this.room.env.HELIUS_API_KEY as string) || "cc4ba0bb-9e76-44be-8681-511665f1c262";
     const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
     try {
@@ -122,24 +122,26 @@ export default class NekoChat implements Party.Server {
           ]
         })
       });
+      if (!response.ok) {
+        return { ok: false, detail: `HTTP ${response.status}: ${response.statusText}` };
+      }
       const data: any = await response.json();
       console.log(`[TOKEN CHECK] Response:`, JSON.stringify(data).substring(0, 500));
       if (data.error) {
-        console.error(`[TOKEN CHECK] RPC error:`, data.error);
-        return false;
+        return { ok: false, detail: `RPC error: ${JSON.stringify(data.error)}` };
       }
       if (data.result?.value?.length > 0) {
         for (const account of data.result.value) {
           const amount = account.account.data.parsed.info.tokenAmount.uiAmount;
           console.log(`[TOKEN CHECK] Found account with amount: ${amount}`);
-          if (amount > 0) return true;
+          if (amount > 0) return { ok: true, detail: `Balance: ${amount}` };
         }
+        return { ok: false, detail: `Found ${data.result.value.length} account(s) but all balances are 0` };
       }
-      console.log(`[TOKEN CHECK] No token accounts found or all balances are 0`);
-      return false;
-    } catch (err) {
+      return { ok: false, detail: `No token accounts found for mint ${TOKEN_MINT}` };
+    } catch (err: any) {
       console.error("[TOKEN CHECK] Exception:", err);
-      return false;
+      return { ok: false, detail: `Exception: ${err?.message || String(err)}` };
     }
   }
   // Track message timestamps for rate limiting
@@ -238,11 +240,11 @@ export default class NekoChat implements Party.Server {
           }));
           return;
         }
-        const holdsToken = await this.verifyTokenHolder(wallet);
-        if (!holdsToken) {
+        const tokenResult = await this.verifyTokenHolder(wallet);
+        if (!tokenResult.ok) {
           sender.send(JSON.stringify({
             type: "join-error",
-            reason: "You must hold the required token to access this room."
+            reason: `Token check failed: ${tokenResult.detail}`
           }));
           return;
         }
