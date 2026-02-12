@@ -30,24 +30,24 @@ async function verifyEd25519(message: Uint8Array, signature: Uint8Array, publicK
   try {
     const key = await crypto.subtle.importKey(
       'raw',
-      publicKey,
+      publicKey as any,
       { name: 'Ed25519' } as any,
       false,
       ['verify']
     );
-    return await crypto.subtle.verify('Ed25519' as any, key, signature, message);
+    return await crypto.subtle.verify('Ed25519' as any, key, signature as any, message as any);
   } catch {
     // Fallback for older CF Workers runtimes
     const key = await crypto.subtle.importKey(
       'raw',
-      publicKey,
+      publicKey as any,
       { name: 'NODE-ED25519', namedCurve: 'NODE-ED25519' } as any,
       false,
       ['verify']
     );
     return await crypto.subtle.verify(
       { name: 'NODE-ED25519', namedCurve: 'NODE-ED25519' } as any,
-      key, signature, message
+      key, signature as any, message as any
     );
   }
 }
@@ -131,7 +131,7 @@ export default class NekoChat implements Party.Server {
   tokenCache: Map<string, { ok: boolean; timestamp: number }>;
   readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-  constructor(readonly room: Room) {
+  constructor(readonly room: Party.Room) {
     this.tokenCache = new Map();
   }
 

@@ -743,13 +743,49 @@ function formatTime(ts) {
 async function translateText(text, targetLang) {
     if (!text || !targetLang) return null;
 
-    // --- TIER 1: Chrome Built-in AI Translator API ---
-    // (Available in Chrome 138+ with Gemini Nano)
-    if (window.translation && typeof window.translation.canTranslate === 'function') {
+    // --- TIER 1: Chrome Built-in AI APIs (Language Detection & Translation) ---
+    // (Available in Chrome with Gemini Nano)
+    if (window.ai && window.ai.languageDetector && window.ai.translator) {
+        try {
+            // Step 1: Detect Language
+            const detectorStatus = await window.ai.languageDetector.capabilities();
+            if (detectorStatus.available !== 'no') {
+                const detector = await window.ai.languageDetector.create();
+                const results = await detector.detect(text);
+                if (results && results.length > 0) {
+                    const detectedLang = results[0].detectedLanguage;
+                    console.log(`[TRANSLATION] Detected: ${detectedLang} (confidence: ${results[0].confidence})`);
+
+                    // If detected as the target language, skip
+                    if (detectedLang === targetLang) {
+                        console.log(`[TRANSLATION] Match target language (${targetLang}), skipping.`);
+                        return null;
+                    }
+                }
+            }
+
+            // Step 2: Translate
+            const translatorStatus = await window.ai.translator.capabilities();
+            if (translatorStatus.available !== 'no') {
+                console.log(`[TRANSLATION] Using Chrome AI Translator API`);
+                const translator = await window.ai.translator.create({
+                    sourceLanguage: 'auto', // Most models handle auto-detection internally too
+                    targetLanguage: targetLang
+                });
+                const result = await translator.translate(text);
+                if (result && result.trim().toLowerCase() !== text.trim().toLowerCase()) {
+                    return result;
+                }
+            }
+        } catch (err) {
+            console.warn('[TRANSLATION] Chrome AI APIs failed or not ready, falling back:', err);
+        }
+    } else if (window.translation && typeof window.translation.canTranslate === 'function') {
+        // Fallback to older window.translation API if window.ai is not present
         try {
             const status = await window.translation.canTranslate({ targetLanguage: targetLang });
             if (status !== 'no') {
-                console.log(`[TRANSLATION] Using Chrome AI API (status: ${status})`);
+                console.log(`[TRANSLATION] Using window.translation API`);
                 const translator = await window.translation.createTranslator({ targetLanguage: targetLang });
                 const result = await translator.translate(text);
                 if (result && result.trim().toLowerCase() !== text.trim().toLowerCase()) {
@@ -757,7 +793,7 @@ async function translateText(text, targetLang) {
                 }
             }
         } catch (err) {
-            console.warn('[TRANSLATION] Chrome AI API failed, falling back:', err);
+            console.warn('[TRANSLATION] window.translation API failed:', err);
         }
     }
 
@@ -774,7 +810,7 @@ async function translateText(text, targetLang) {
                 pendingTranslations.delete(text);
                 resolve(null);
             }
-        }, 5000);
+        }, 10000);
 
         pendingTranslations.set(text, (result) => {
             clearTimeout(timeout);
