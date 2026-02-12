@@ -96,6 +96,10 @@ export default class NekoChat implements Party.Server {
     return (await this.room.storage.get<string[]>("storedAdminWallets")) || [];
   }
 
+  private async getStoredModWallets(): Promise<string[]> {
+    return (await this.room.storage.get<string[]>("storedModWallets")) || [];
+  }
+
   private async getAllAdminWallets(): Promise<string[]> {
     const envAdmins = this.getAdminWallets();
     const storedAdmins = await this.getStoredAdminWallets();
@@ -319,8 +323,10 @@ export default class NekoChat implements Party.Server {
         ? parsed.color
         : getRandomColor();
       const allAdmins = await this.getAllAdminWallets();
+      const allMods = await this.getStoredModWallets();
       const isAdmin = allAdmins.includes(wallet);
-      sender.setState({ username, color, wallet, isAdmin });
+      const isMod = allMods.includes(wallet);
+      sender.setState({ username, color, wallet, isAdmin, isMod });
 
       if (isAdmin) {
         sender.send(JSON.stringify({ type: "admin-mode" }));
@@ -518,6 +524,21 @@ export default class NekoChat implements Party.Server {
             if (cleanTarget && !storedAdmins.includes(cleanTarget)) {
               storedAdmins.push(cleanTarget);
               await this.room.storage.put("storedAdminWallets", storedAdmins);
+
+              // Immediate update: Find if user is online and update state
+              let found = false;
+              for (const conn of this.room.getConnections()) {
+                const state = conn.state as any;
+                if (state && state.wallet === cleanTarget) {
+                  conn.setState({ ...state, isAdmin: true });
+                  conn.send(JSON.stringify({ type: "admin-mode" }));
+                  found = true;
+                }
+              }
+              if (found) {
+                this.broadcastUserList();
+              }
+
               sender.send(JSON.stringify({ type: "system-message", text: `✅ Added ADMIN: ${cleanTarget}` }));
             } else {
               sender.send(JSON.stringify({ type: "system-message", text: `⚠️ Invalid or already admin: ${cleanTarget}` }));

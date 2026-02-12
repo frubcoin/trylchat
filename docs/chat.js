@@ -632,6 +632,11 @@ function appendChatMessage(data) {
         badge.className = 'admin-badge';
         badge.textContent = 'ADMIN';
         nameEl.after(badge);
+    } else if (data.isMod) {
+        const badge = document.createElement('span');
+        badge.className = 'mod-badge'; // We need to style this
+        badge.textContent = 'MOD';
+        nameEl.after(badge);
     }
 
     div.querySelector('.msg-text').innerText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
