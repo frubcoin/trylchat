@@ -88,7 +88,7 @@ body {
   opacity: .9;
   visibility: visible;
   pointer-events: none;
-  z-index: -1;
+  z-index: 0;
 }
 
 @keyframes bg-animation {
@@ -757,6 +757,8 @@ body {
   gap: 24px;
   overflow-y: auto;
   background: var(--bg);
+  position: relative;
+  z-index: 1;
 }
 
 #room-list {
