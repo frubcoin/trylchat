@@ -427,43 +427,38 @@ function setupEmojiPicker() {
 
     function showPicker() {
         if (!pickerInstance) {
-            const Picker = window.EmojiPicker;
-            if (!Picker) {
-                console.error('EmojiPicker not loaded yet');
-                alert('Emoji library loading... please try again in a moment.');
+            // Use global EmojiMart object from browser script
+            if (typeof EmojiMart === 'undefined') {
+                console.error('EmojiMart not loaded');
+                alert('Emoji library loading... please try again.');
                 return;
             }
 
-            try {
-                pickerInstance = new Picker({
-                    data: async () => {
-                        try {
-                            const response = await fetch(
-                                'https://cdn.jsdelivr.net/npm/@emoji-mart/data@latest/sets/14/native.json'
-                            );
-                            if (!response.ok) throw new Error('Failed to load emoji data');
-                            return response.json();
-                        } catch (err) {
-                            console.error('Emoji data load failed:', err);
-                            alert('Could not load emojis. Check connection.');
-                            throw err;
-                        }
-                    },
-                    onEmojiSelect: (emoji) => {
-                        insertEmoji(emoji.native);
-                        // Optional: close after select? No, let user pick multiple.
-                    },
-                    theme: 'dark',
-                    previewPosition: 'none',
-                    skinTonePosition: 'none',
-                    navPosition: 'bottom',
-                    perLine: 8,
-                    maxFrequentRows: 1
-                });
-                container.appendChild(pickerInstance);
-            } catch (err) {
-                console.error('Error creating picker:', err);
-            }
+            const pickerOptions = {
+                data: async () => {
+                    const response = await fetch(
+                        'https://cdn.jsdelivr.net/npm/@emoji-mart/data@latest/sets/14/native.json'
+                    );
+                    return response.json();
+                },
+                onEmojiSelect: (emoji) => {
+                    insertEmoji(emoji.native);
+                },
+                theme: 'dark',
+                previewPosition: 'none',
+                skinTonePosition: 'none',
+                navPosition: 'bottom',
+                perLine: 8,
+                maxFrequentRows: 1,
+                onClickOutside: (e) => {
+                    // We handle outside clicks manually for the toggle button logic, 
+                    // but we can close it here if strictly outside.
+                    // However, our existing document click listener handles this well.
+                }
+            };
+
+            pickerInstance = new EmojiMart.Picker(pickerOptions);
+            container.appendChild(pickerInstance);
         }
         container.classList.remove('hidden');
     }
