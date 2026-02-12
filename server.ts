@@ -683,6 +683,7 @@ export default class NekoChat implements Party.Server {
           username: state.username,
           color: state.color,
           isAdmin: state.isAdmin
+          // Wallet is intentionally omitted for privacy
         });
       }
     }
