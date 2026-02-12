@@ -628,17 +628,15 @@ body {
 }
 
 .btn-send {
-  font-family: var(--font-body);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent);
-  color: var(--bg);
+  background: transparent;
+  color: #fff;
   border: none;
   border-radius: 8px;
-  /* Slightly rounded square to match input */
   cursor: pointer;
-  width: 42px;
+  width: 40px;
   /* Fixed width for icon */
   height: 42px;
   padding: 0;
