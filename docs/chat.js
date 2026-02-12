@@ -683,10 +683,20 @@ function updateUserList(users, total) {
         li.style.color = u.color;
         li.textContent = u.username;
 
-        if (u.isAdmin) {
+        if (u.isOwner) {
+            const badge = document.createElement('span');
+            badge.className = 'owner-badge mini';
+            badge.textContent = 'OWNER';
+            li.appendChild(badge);
+        } else if (u.isAdmin) {
             const badge = document.createElement('span');
             badge.className = 'admin-badge mini';
             badge.textContent = 'ADMIN';
+            li.appendChild(badge);
+        } else if (u.isMod) {
+            const badge = document.createElement('span');
+            badge.className = 'mod-badge mini';
+            badge.textContent = 'MOD';
             li.appendChild(badge);
         }
 

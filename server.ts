@@ -803,6 +803,7 @@ export default class NekoChat implements Party.Server {
       };
 
       // Broadcast to everyone
+      console.log("[BROADCAST] msgData:", JSON.stringify(msgData));
       this.room.broadcast(
         JSON.stringify({ type: "chat-message", ...msgData })
       );
@@ -903,7 +904,9 @@ export default class NekoChat implements Party.Server {
         users.push({
           username: state.username,
           color: state.color,
-          isAdmin: state.isAdmin
+          isAdmin: state.isAdmin,
+          isMod: state.isMod,
+          isOwner: state.isOwner
           // Wallet is intentionally omitted for privacy
         });
       }
