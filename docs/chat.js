@@ -501,6 +501,48 @@ DOM.loginForm.addEventListener('submit', (e) => {
 let colorPickerInstance = null;
 let userColor = '#ffffff';
 
+// Make fallback function globally accessible
+function createFallbackColorPicker() {
+    console.log('Creating fallback color picker');
+    const popover = document.getElementById('color-picker-popover');
+    if (!popover) return;
+    
+    popover.innerHTML = '';
+    
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = userColor;
+    colorInput.style.width = '100%';
+    colorInput.style.height = '40px';
+    colorInput.style.border = 'none';
+    colorInput.style.borderRadius = '8px';
+    colorInput.style.cursor = 'pointer';
+    
+    colorInput.addEventListener('change', (e) => {
+        const newColor = e.target.value;
+        userColor = newColor;
+        const btnColor = document.getElementById('btn-color');
+        if (btnColor) btnColor.style.backgroundColor = newColor;
+        
+        try {
+            localStorage.setItem('chat_color', newColor);
+            if (currentWalletAddress) {
+                localStorage.setItem(`chat_color_${currentWalletAddress}`, newColor);
+            }
+        } catch (e) { /* ignore */ }
+        
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'update-color',
+                color: newColor
+            }));
+        }
+    });
+    
+    popover.appendChild(colorInput);
+    popover.classList.remove('hidden');
+}
+
 function loadWalletColor(wallet) {
     if (!wallet) return;
     try {
@@ -536,66 +578,166 @@ function setupColorPicker() {
     const btnColor = DOM.btnColor;
     const popover = DOM.colorPopover;
 
-    if (!btnColor || !popover) return;
+    console.log('Setting up color picker...', { btnColor: !!btnColor, popover: !!popover, iro: !!window.iro });
 
-    btnColor.addEventListener('click', (e) => {
+    if (!btnColor || !popover) {
+        console.error('Color picker elements not found:', { btnColor, popover });
+        return;
+    }
+
+    // Flag to prevent double handling
+    let isHandlingClick = false;
+
+    // Remove any existing listeners to prevent duplicates
+    btnColor.replaceWith(btnColor.cloneNode(true));
+    const newBtnColor = document.getElementById('btn-color');
+
+    newBtnColor.addEventListener('click', (e) => {
+        console.log('Color button clicked');
+        
+        if (isHandlingClick) {
+            console.log('Already handling click, ignoring');
+            return;
+        }
+        
+        isHandlingClick = true;
+        e.preventDefault();
         e.stopPropagation();
+        
         if (popover.classList.contains('hidden')) {
+            console.log('Showing color picker');
             showColorPicker();
         } else {
+            console.log('Hiding color picker');
             hideColorPicker();
         }
+        
+        // Reset flag after a short delay
+        setTimeout(() => {
+            isHandlingClick = false;
+        }, 100);
     });
 
+    // Close on outside click - but not immediately
+    let outsideClickTimeout;
     document.addEventListener('click', (e) => {
         if (!popover.classList.contains('hidden') &&
             !popover.contains(e.target) &&
-            e.target !== btnColor) {
-            hideColorPicker();
+            e.target !== newBtnColor) {
+            
+            // Clear any existing timeout
+            if (outsideClickTimeout) {
+                clearTimeout(outsideClickTimeout);
+            }
+            
+            // Delay hiding to prevent immediate hide after show
+            outsideClickTimeout = setTimeout(() => {
+                if (!popover.classList.contains('hidden')) {
+                    hideColorPicker();
+                }
+            }, 50);
         }
     });
 
     function showColorPicker() {
-        if (!colorPickerInstance && window.iro) {
-            colorPickerInstance = new iro.ColorPicker(popover, {
-                width: 150,
-                color: userColor,
-                layout: [
-                    { component: iro.ui.Wheel, options: {} },
-                ]
-            });
-
-            colorPickerInstance.on('color:change', function (color) {
-                const newColor = color.hexString;
-                userColor = newColor;
-                btnColor.style.backgroundColor = newColor;
-
-                try {
-                    // Save to both generic and wallet-specific
-                    localStorage.setItem('chat_color', newColor);
-                    if (currentWalletAddress) {
-                        localStorage.setItem(`chat_color_${currentWalletAddress}`, newColor);
-                    }
-                } catch (e) { /* ignore */ }
-
-                // Send update to server
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        type: 'update-color',
-                        color: newColor
-                    }));
-                }
-            });
+        console.log('showColorPicker called, iro available:', !!window.iro);
+        
+        // Clear any existing outside click timeout
+        if (outsideClickTimeout) {
+            clearTimeout(outsideClickTimeout);
         }
+        
+        // Check if iro is available, if not wait a bit and retry
+        if (!window.iro) {
+            console.warn('IRO library not loaded yet, retrying...');
+            // Only retry a few times before falling back
+            if (!this.retryCount) this.retryCount = 0;
+            this.retryCount++;
+            
+            if (this.retryCount > 10) {
+                console.warn('IRO library failed to load, using fallback');
+                createFallbackColorPicker();
+                return;
+            }
+            
+            setTimeout(showColorPicker, 100);
+            return;
+        }
+
+        if (!colorPickerInstance) {
+            try {
+                console.log('Creating color picker instance...');
+                
+                // Clear popover first
+                popover.innerHTML = '';
+                
+                colorPickerInstance = new iro.ColorPicker(popover, {
+                    width: 150,
+                    color: userColor,
+                    layout: [
+                        { component: iro.ui.Wheel, options: {} },
+                    ]
+                });
+                console.log('Color picker created successfully');
+
+                colorPickerInstance.on('color:change', function (color) {
+                    const newColor = color.hexString;
+                    userColor = newColor;
+                    newBtnColor.style.backgroundColor = newColor;
+
+                    try {
+                        // Save to both generic and wallet-specific
+                        localStorage.setItem('chat_color', newColor);
+                        if (currentWalletAddress) {
+                            localStorage.setItem(`chat_color_${currentWalletAddress}`, newColor);
+                        }
+                    } catch (e) { /* ignore */ }
+
+                    // Send update to server
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'update-color',
+                            color: newColor
+                        }));
+                    }
+                });
+            } catch (err) {
+                console.error('Failed to create color picker:', err);
+                // Fallback to simple HTML5 color input
+                createFallbackColorPicker();
+                return;
+            }
+        }
+        console.log('Removing hidden class from popover');
         popover.classList.remove('hidden');
+        
+        // Debug: Check if the picker is actually visible
+        setTimeout(() => {
+            const rect = popover.getBoundingClientRect();
+            console.log('Color picker popover dimensions:', {
+                width: rect.width,
+                height: rect.height,
+                visible: rect.width > 0 && rect.height > 0,
+                display: window.getComputedStyle(popover).display,
+                visibility: window.getComputedStyle(popover).visibility
+            });
+            
+            // Also check if iro created any elements inside
+            const iroElements = popover.querySelectorAll('[class*="iro"]');
+            console.log('IRO elements found:', iroElements.length);
+        }, 200);
     }
 
     function hideColorPicker() {
+        console.log('Hiding color picker popover');
         popover.classList.add('hidden');
     }
 }
 
-setupColorPicker();
+// Initialize color picker with delay to ensure iro.js is loaded
+setTimeout(() => {
+    setupColorPicker();
+}, 200);
 
 // ═══ EMOJI PICKER ═══
 let pickerInstance = null;
@@ -604,27 +746,75 @@ function setupEmojiPicker() {
     const btnEmoji = document.getElementById('btn-emoji');
     const container = document.getElementById('emoji-picker-container');
 
-    if (!btnEmoji || !container) return;
+    if (!btnEmoji || !container) {
+        console.error('Emoji picker elements not found:', { btnEmoji: !!btnEmoji, container: !!container });
+        return;
+    }
 
-    btnEmoji.addEventListener('click', (e) => {
+    console.log('Setting up emoji picker...');
+
+    // Flag to prevent double handling
+    let isHandlingClick = false;
+
+    // Remove any existing listeners to prevent duplicates
+    btnEmoji.replaceWith(btnEmoji.cloneNode(true));
+    const newBtnEmoji = document.getElementById('btn-emoji');
+
+    newBtnEmoji.addEventListener('click', (e) => {
+        console.log('Emoji button clicked');
+        
+        if (isHandlingClick) {
+            console.log('Already handling emoji click, ignoring');
+            return;
+        }
+        
+        isHandlingClick = true;
+        e.preventDefault();
         e.stopPropagation();
+        
         if (container.classList.contains('hidden')) {
+            console.log('Showing emoji picker');
             showPicker();
         } else {
+            console.log('Hiding emoji picker');
             hidePicker();
         }
+        
+        // Reset flag after a short delay
+        setTimeout(() => {
+            isHandlingClick = false;
+        }, 100);
     });
 
-    // Close on outside click
+    // Close on outside click - but not immediately
+    let outsideClickTimeout;
     document.addEventListener('click', (e) => {
         if (!container.classList.contains('hidden') &&
             !container.contains(e.target) &&
-            e.target !== btnEmoji) {
-            hidePicker();
+            e.target !== newBtnEmoji) {
+            
+            // Clear any existing timeout
+            if (outsideClickTimeout) {
+                clearTimeout(outsideClickTimeout);
+            }
+            
+            // Delay hiding to prevent immediate hide after show
+            outsideClickTimeout = setTimeout(() => {
+                if (!container.classList.contains('hidden')) {
+                    hidePicker();
+                }
+            }, 50);
         }
     });
 
     function showPicker() {
+        console.log('showPicker called, EmojiMart available:', typeof EmojiMart !== 'undefined');
+        
+        // Clear any existing outside click timeout
+        if (outsideClickTimeout) {
+            clearTimeout(outsideClickTimeout);
+        }
+        
         if (!pickerInstance) {
             // Use global EmojiMart object from browser script
             if (typeof EmojiMart === 'undefined') {
@@ -633,6 +823,8 @@ function setupEmojiPicker() {
                 return;
             }
 
+            console.log('Creating emoji picker instance...');
+            
             const pickerOptions = {
                 data: async () => {
                     const response = await fetch(
@@ -658,11 +850,25 @@ function setupEmojiPicker() {
 
             pickerInstance = new EmojiMart.Picker(pickerOptions);
             container.appendChild(pickerInstance);
+            console.log('Emoji picker created successfully');
         }
         container.classList.remove('hidden');
+        
+        // Debug: Check if the picker is actually visible
+        setTimeout(() => {
+            const rect = container.getBoundingClientRect();
+            console.log('Emoji picker container dimensions:', {
+                width: rect.width,
+                height: rect.height,
+                visible: rect.width > 0 && rect.height > 0,
+                display: window.getComputedStyle(container).display,
+                visibility: window.getComputedStyle(container).visibility
+            });
+        }, 200);
     }
 
     function hidePicker() {
+        console.log('Hiding emoji picker');
         container.classList.add('hidden');
     }
 
