@@ -73,7 +73,6 @@ body {
   pointer-events: auto;
 }
 
-/* ═══ NOISE BACKGROUND ═══ */
 .bg {
   position: fixed;
   top: -50%;
