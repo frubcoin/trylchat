@@ -90,10 +90,12 @@
         <form id="chat-form">
           <div id="chat-input-area">
             <input type="color" id="color-picker" title="Change name color">
-            <input type="text" id="chat-input" placeholder="say something..." maxlength="500" autocomplete="off">
-            <button type="submit" class="btn-send">↑</button>
+            <button type="button" id="btn-emoji" class="icon-btn">😊</button>
+            <input type="text" id="chat-input" placeholder="Say something..." autocomplete="off">
+            <button type="submit">Send</button>
           </div>
         </form>
+        <div id="emoji-picker-container" class="hidden absolute bottom-16 left-4 z-50"></div>
       </div>
 
       <!-- SIDEBAR (RIGHT) -->
@@ -131,6 +133,11 @@
     <div id="game-message">WAIT FOR IT...</div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@emoji-mart/data@latest/sets/14/native.json"></script>
+  <script type="module">
+    import { Picker } from 'https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js'
+    window.EmojiPicker = Picker
+  </script>
   <script src="chat.js"></script>
 </body>
 

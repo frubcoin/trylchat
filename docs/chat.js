@@ -398,6 +398,75 @@ DOM.colorPicker.addEventListener('change', (e) => {
     }
 });
 
+// ═══ EMOJI PICKER ═══
+let pickerInstance = null;
+
+function setupEmojiPicker() {
+    const btnEmoji = document.getElementById('btn-emoji');
+    const container = document.getElementById('emoji-picker-container');
+
+    if (!btnEmoji || !container) return;
+
+    btnEmoji.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (container.classList.contains('hidden')) {
+            showPicker();
+        } else {
+            hidePicker();
+        }
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!container.classList.contains('hidden') &&
+            !container.contains(e.target) &&
+            e.target !== btnEmoji) {
+            hidePicker();
+        }
+    });
+
+    function showPicker() {
+        if (!pickerInstance) {
+            const Picker = window.EmojiPicker;
+            if (Picker) {
+                pickerInstance = new Picker({
+                    data: async () => {
+                        const response = await fetch(
+                            'https://cdn.jsdelivr.net/npm/@emoji-mart/data@latest/sets/14/native.json'
+                        )
+                        return response.json()
+                    },
+                    onEmojiSelect: (emoji) => {
+                        insertEmoji(emoji.native);
+                    },
+                    theme: 'dark',
+                    previewPosition: 'none',
+                    skinTonePosition: 'none'
+                });
+                container.appendChild(pickerInstance);
+            }
+        }
+        container.classList.remove('hidden');
+    }
+
+    function hidePicker() {
+        container.classList.add('hidden');
+    }
+
+    function insertEmoji(emoji) {
+        const input = DOM.chatInput;
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const text = input.value;
+        input.value = text.substring(0, start) + emoji + text.substring(end);
+        input.selectionStart = input.selectionEnd = start + emoji.length;
+        input.focus();
+    }
+}
+
+// Initialize picker setup
+setupEmojiPicker();
+
 // ═══ SEND ═══
 // Message History & Auto-complete
 DOM.chatInput.addEventListener('keydown', (e) => {
