@@ -330,9 +330,13 @@ export default class NekoChat implements Party.Server {
       const allMods = await this.getStoredModWallets();
       const ownerWallet = this.getOwnerWallet();
 
+      console.log(`[JOIN] Wallet: ${wallet}, Owner: ${ownerWallet}`);
+
       const isAdmin = allAdmins.includes(wallet);
       const isMod = allMods.includes(wallet);
       const isOwner = wallet === ownerWallet;
+
+      console.log(`[JOIN] Flags -> Admin: ${isAdmin}, Mod: ${isMod}, Owner: ${isOwner}`);
 
       sender.setState({ username, color, wallet, isAdmin, isMod, isOwner });
 
@@ -751,67 +755,68 @@ export default class NekoChat implements Party.Server {
           return;
         }
       }
-    }
 
-    // Check if muted
-    if (this.mutedUsers.has(username)) {
-      sender.send(JSON.stringify({ type: "system-message", text: "🤐 You are muted and cannot chat." }));
-      return;
-    }
+      // Check if muted
+      if (this.mutedUsers.has(username)) {
+        sender.send(JSON.stringify({ type: "system-message", text: "🤐 You are muted and cannot chat." }));
+        return;
+      }
 
-    // Rate Limit Check
-    const text = (parsed.text || "")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .trim();
+      // Rate Limit Check
+      const text = (parsed.text || "")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .trim();
 
-    if (!text) return;
+      if (!text) return;
 
-    const now = Date.now();
-    const timestamps = this.rateLimits.get(sender.id) || [];
-    // Filter out timestamps outside the window
-    const recent = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW);
+      const now = Date.now();
+      const timestamps = this.rateLimits.get(sender.id) || [];
+      // Filter out timestamps outside the window
+      const recent = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW);
 
-    if (recent.length >= MAX_MESSAGES_PER_WINDOW) {
-      // Rate limit exceeded - send warning only to sender
-      sender.send(JSON.stringify({
-        type: "system-message",
-        text: "You're chatting too fast! 🐢",
-        timestamp: now
-      }));
-      // Update valid timestamps but don't add new one (blocking)
+      if (recent.length >= MAX_MESSAGES_PER_WINDOW) {
+        // Rate limit exceeded - send warning only to sender
+        sender.send(JSON.stringify({
+          type: "system-message",
+          text: "You're chatting too fast! 🐢",
+          timestamp: now
+        }));
+        // Update valid timestamps but don't add new one (blocking)
+        this.rateLimits.set(sender.id, recent);
+        return;
+      }
+
+      // Allowed - update timestamps
+      recent.push(now);
       this.rateLimits.set(sender.id, recent);
-      return;
+
+      const msgData = {
+        msgType: "chat",
+        username,
+        color,
+        text,
+        isAdmin,
+        isMod,
+        isOwner,
+        timestamp: Date.now(),
+      };
+
+      // Broadcast to everyone
+      this.room.broadcast(
+        JSON.stringify({ type: "chat-message", ...msgData })
+      );
+
+      // Persist to history
+      const history =
+        ((await this.room.storage.get("chatHistory")) as any[]) || [];
+      history.push(msgData);
+      await this.room.storage.put(
+        "chatHistory",
+        history.slice(-MAX_HISTORY)
+      );
+
     }
-
-    // Allowed - update timestamps
-    recent.push(now);
-    this.rateLimits.set(sender.id, recent);
-
-    const msgData = {
-      msgType: "chat",
-      username,
-      color,
-      text,
-      isAdmin,
-      isMod,
-      isOwner,
-      timestamp: Date.now(),
-    };
-
-    // Broadcast to everyone
-    this.room.broadcast(
-      JSON.stringify({ type: "chat-message", ...msgData })
-    );
-
-    // Persist to history
-    const history =
-      ((await this.room.storage.get("chatHistory")) as any[]) || [];
-    history.push(msgData);
-    await this.room.storage.put(
-      "chatHistory",
-      history.slice(-MAX_HISTORY)
-    );
 
     // Cursor position — relay to everyone else (no persistence)
     if (parsed.type === "cursor") {
