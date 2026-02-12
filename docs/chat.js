@@ -39,7 +39,7 @@ function connectWebSocket(roomId) {
     ws.addEventListener('open', () => {
         console.log(`connected to ${roomId}`);
         isSwitchingRoom = false;
-        if (currentUsername && currentWalletAddress) {
+        if (currentUsername) {
             const joinMsg = {
                 type: 'join',
                 username: currentUsername,
@@ -49,7 +49,6 @@ function connectWebSocket(roomId) {
                 hasToken: hasToken,
                 color: userColor
             };
-            // console.log('[JOIN] Sending:', JSON.stringify(joinMsg).substring(0, 300));
             ws.send(JSON.stringify(joinMsg));
         }
     });
@@ -87,7 +86,7 @@ function connectWebSocket(roomId) {
                 }
                 break;
             case 'cursor':
-                updateRemoteCursor(data);
+                if (currentUsername) updateRemoteCursor(data);
                 break;
             case 'cursor-gone':
                 removeRemoteCursor(data.id);
@@ -200,9 +199,9 @@ const DOM = {
 
 let currentUsername = '';
 try {
-    currentUsername = localStorage.getItem('chat_username') || '';
-    if (currentUsername && DOM.usernameInput) {
-        DOM.usernameInput.value = currentUsername;
+    const savedName = localStorage.getItem('chat_username') || '';
+    if (savedName && DOM.usernameInput) {
+        DOM.usernameInput.value = savedName;
     }
 } catch (e) { }
 
