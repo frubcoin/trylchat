@@ -534,6 +534,7 @@ function loadWalletColor(wallet) {
         }
         if (colorPickerInstance) {
             applyPickerColor(userColor);
+            colorPickerInstance.setColor(userColor);
         }
     } catch (e) {
         console.warn('LocalStorage access blocked', e);
@@ -634,6 +635,7 @@ function setupColorPicker() {
             fallbackColorInput.value = userColor;
         } else if (colorPickerInstance) {
             applyPickerColor(userColor);
+            colorPickerInstance.setColor(userColor);
         }
         popover.classList.remove('hidden');
     }
@@ -725,6 +727,8 @@ function setupEmojiPicker() {
                 pickerInstance = quick;
                 container.appendChild(quick);
             }
+            pickerInstance = new EmojiMart.Picker(pickerOptions);
+            container.appendChild(pickerInstance);
         }
         container.classList.remove('hidden');
     }
