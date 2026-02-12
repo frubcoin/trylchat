@@ -59,7 +59,7 @@ function connectWebSocket(roomId) {
 
         switch (data.type) {
             case 'chat-message':
-                appendChatMessage(data);
+                appendChatMessage(data, false);
                 scrollToBottom();
                 break;
             case 'admin-mode':
@@ -79,7 +79,7 @@ function connectWebSocket(roomId) {
             case 'history':
                 if (data.messages && Array.isArray(data.messages)) {
                     data.messages.forEach(msg => {
-                        if (msg.msgType === 'chat') appendChatMessage(msg);
+                        if (msg.msgType === 'chat') appendChatMessage(msg, true);
                         else if (msg.msgType === 'system') appendSystemMessage(msg);
                     });
                     scrollToBottom();
@@ -732,35 +732,74 @@ function formatTime(ts) {
 }
 
 async function translateText(text, targetLang) {
-    try {
-        const response = await fetch("https://libretranslate.de/translate", {
-            method: "POST",
-            body: JSON.stringify({
-                q: text,
-                source: "auto",
-                target: targetLang,
-                format: "text",
-                api_key: ""
-            }),
-            headers: { "Content-Type": "application/json" }
-        });
+    if (!text || !targetLang) return null;
 
-        if (!response.ok) return null;
-        const data = await response.json();
-
-        // If detected language is already the target language, don't show translation
-        if (data.detectedLanguage && data.detectedLanguage.language === targetLang) {
-            return null;
+    // --- TIER 1: Chrome Built-in AI Translator API ---
+    // (Available in Chrome 138+ with Gemini Nano)
+    if (window.translation && typeof window.translation.canTranslate === 'function') {
+        try {
+            const status = await window.translation.canTranslate({ targetLanguage: targetLang });
+            if (status !== 'no') {
+                console.log(`[TRANSLATION] Using Chrome AI API (status: ${status})`);
+                const translator = await window.translation.createTranslator({ targetLanguage: targetLang });
+                const result = await translator.translate(text);
+                if (result && result.trim().toLowerCase() !== text.trim().toLowerCase()) {
+                    return result;
+                }
+            }
+        } catch (err) {
+            console.warn('[TRANSLATION] Chrome AI API failed, falling back:', err);
         }
-
-        return data.translatedText;
-    } catch (err) {
-        console.error("Translation error:", err);
-        return null;
     }
+
+    // --- TIER 2: External LibreTranslate Mirrors ---
+    const mirrors = [
+        "https://translate.argosopentech.com/translate",
+        "https://libretranslate.de/translate",
+        "https://translate.terraprint.co/translate"
+    ];
+
+    for (const mirror of mirrors) {
+        try {
+            console.log(`[TRANSLATION] Attempting mirror ${mirror} for: "${text.substring(0, 20)}..."`);
+            const response = await fetch(mirror, {
+                method: "POST",
+                body: JSON.stringify({
+                    q: text,
+                    source: "auto",
+                    target: targetLang,
+                    format: "text",
+                    api_key: ""
+                }),
+                headers: { "Content-Type": "application/json" }
+            });
+
+            if (!response.ok) {
+                console.warn(`[TRANSLATION] Mirror ${mirror} returned ${response.status}`);
+                continue;
+            }
+
+            const data = await response.json();
+
+            // If detected language is already the target language, don't show translation
+            if (data.detectedLanguage && data.detectedLanguage.language === targetLang) {
+                console.log(`[TRANSLATION] Detected as native language (${targetLang}), skipping.`);
+                return null;
+            }
+
+            if (data.translatedText) {
+                console.log(`[TRANSLATION] Success via mirror: "${data.translatedText.substring(0, 20)}..."`);
+                return data.translatedText;
+            }
+        } catch (err) {
+            console.warn(`[TRANSLATION] Error with ${mirror}:`, err.message);
+        }
+    }
+
+    return null;
 }
 
-async function appendChatMessage(data) {
+async function appendChatMessage(data, isHistory = false) {
     if (data.isOwner || data.isMod || data.isAdmin) {
         console.log('[CHAT-RENDER] Badge Data:', {
             user: data.username,
@@ -801,16 +840,16 @@ async function appendChatMessage(data) {
         nameEl.after(badge);
     }
 
-    div.querySelector('.msg-text').innerText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    const unescapedText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    div.querySelector('.msg-text').innerText = unescapedText;
 
     DOM.chatMessages.appendChild(div);
 
-    // Auto-Translation: Skip if system message or if it's our own message?
+    // Auto-Translation: Skip if system message or if it's from history
     // User requested "force translation on any non native language".
-    // We'll check if it's in a different language.
-    if (data.text && userLanguage) {
-        const result = await translateText(data.text, userLanguage);
-        if (result && result.trim().toLowerCase() !== data.text.trim().toLowerCase()) {
+    if (!isHistory && unescapedText && userLanguage) {
+        const result = await translateText(unescapedText, userLanguage);
+        if (result && result.trim().toLowerCase() !== unescapedText.trim().toLowerCase()) {
             const translationDiv = document.createElement('div');
             translationDiv.className = 'msg-translation';
             translationDiv.textContent = `🌐 ${result}`;
