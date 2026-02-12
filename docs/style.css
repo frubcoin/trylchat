@@ -630,24 +630,24 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  background: #fff;
   color: #000;
   border: none;
+  border-radius: 50%;
   cursor: pointer;
-  width: 40px;
-  /* Fixed width for icon */
+  width: 42px;
   height: 42px;
   padding: 0;
-  transition: opacity 0.2s;
+  transition: transform 0.2s;
   flex-shrink: 0;
-  filter: invert(1);
+  /* Removed filter: invert(1) */
 }
 
 .btn-send:hover {
-  opacity: 0.8;
-  transform: none;
-  background: transparent;
-  box-shadow: none;
+  transform: scale(1.1);
+  opacity: 1;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
 /* ═══ EMOJI PICKER & COLOR PICKER ═══ */
