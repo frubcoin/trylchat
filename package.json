@@ -8,11 +8,7 @@
     "deploy": "partykit deploy"
   },
   "devDependencies": {
-    "partykit": "latest",
-    "partysocket": "latest"
+    "partykit": "latest"
   },
-  "dependencies": {
-    "bs58": "^6.0.0",
-    "tweetnacl": "^1.0.3"
-  }
+  "dependencies": {}
 }
