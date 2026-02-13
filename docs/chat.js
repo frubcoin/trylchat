@@ -1097,16 +1097,31 @@ function formatTime(ts) {
 }
 
 async function getGoogleAiLanguageDetector() {
+    console.log('[AI] Checking Language Detector support...', window.ai?.languageDetector);
+
     if (!window.ai?.languageDetector?.capabilities || !window.ai?.languageDetector?.create) {
+        console.warn('[AI] window.ai.languageDetector APIs are missing.');
         updateAIStatus('unavailable');
         return null;
     }
 
-    const capabilities = await window.ai.languageDetector.capabilities();
-    if (!capabilities || capabilities.available === 'no') {
+    try {
+        const capabilities = await window.ai.languageDetector.capabilities();
+        console.log('[AI] Language Detector Capabilities:', capabilities);
+
+        if (!capabilities || capabilities.available === 'no') {
+            console.warn('[AI] Language Detector not available (capabilities.available = no)');
+            updateAIStatus('unavailable');
+            return null;
+        }
+    } catch (err) {
+        console.error('[AI] Error checking capabilities:', err);
         updateAIStatus('unavailable');
         return null;
     }
+
+    // re-fetch capabilities to be safe for create flow logic below
+    const capabilities = await window.ai.languageDetector.capabilities();
 
     let detector;
     try {
