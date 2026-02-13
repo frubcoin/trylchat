@@ -1175,6 +1175,12 @@ body {
   border-color: var(--border-light);
 }
 
+.onboarding-info-btn {
+  width: auto;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .sidebar-info-wrap {
   position: sticky;
   top: 0;

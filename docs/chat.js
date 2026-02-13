@@ -309,6 +309,19 @@ function closeInfoOverlay() {
     DOM.infoOverlay.classList.add('hidden');
 }
 
+function bindInfoOpenButtons() {
+    const buttons = document.querySelectorAll('[data-open-info]');
+    buttons.forEach((button) => {
+        if (button.dataset.infoBound === '1') return;
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openInfoOverlay();
+        });
+        button.dataset.infoBound = '1';
+    });
+}
+
 if (!DOM.btnInfo && DOM.sidebar) {
     const wrap = document.createElement('div');
     wrap.className = 'sidebar-info-wrap';
@@ -316,19 +329,15 @@ if (!DOM.btnInfo && DOM.sidebar) {
     button.id = 'btn-info';
     button.className = 'btn-info-panel';
     button.type = 'button';
+    button.setAttribute('data-open-info', '');
     button.textContent = 'Info & Security';
     wrap.appendChild(button);
     DOM.sidebar.insertBefore(wrap, DOM.sidebar.firstChild);
     DOM.btnInfo = button;
+    bindInfoOpenButtons();
 }
 
-if (DOM.btnInfo) {
-    DOM.btnInfo.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openInfoOverlay();
-    });
-}
+bindInfoOpenButtons();
 
 if (DOM.btnInfoClose) {
     DOM.btnInfoClose.addEventListener('click', (e) => {

@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Jersey+10&display=swap"
     rel="stylesheet">
   <link rel="preload" href="fonts/GeistPixel.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 </head>
 
@@ -93,6 +93,7 @@
       </form>
 
       <p class="login-hint">be kind to each other</p>
+      <button type="button" class="btn-text onboarding-info-btn" data-open-info style="margin-top: 10px;">Security & Privacy Info</button>
     </div>
   </div>
 
@@ -232,7 +233,7 @@
       <aside id="sidebar">
         <div class="resize-handle" id="resizer-right"></div>
         <div class="sidebar-info-wrap">
-          <button id="btn-info" class="btn-info-panel" type="button">Info & Security</button>
+          <button id="btn-info" class="btn-info-panel" type="button" data-open-info>Info & Security</button>
         </div>
         <div class="sidebar-section">
           <h3 class="sidebar-title">People</h3>
@@ -277,19 +278,19 @@
       </div>
       <div class="info-content">
         <p><strong>App Overview</strong></p>
-        <p>tryl.chat is a real-time, room-based chat app powered by PartyKit with wallet-gated access controls for selected rooms. It supports live messaging, reactions, reply threads, typing indicators, cursors, moderation tools, and a reaction mini-game.</p>
+        <p>tryl.chat is a real-time, room-based chat app powered by PartyKit. It supports live messaging, reactions, reply threads, typing indicators, cursors, moderation tools, and a reaction mini-game.</p>
 
-        <p><strong>How Access Control Works</strong></p>
-        <p>When you connect a wallet, the app requests a server-issued auth challenge and signs it with Phantom. The server verifies that signature before allowing join. For token-gated rooms, the server performs token ownership checks through a trusted relay and only then grants access.</p>
+        <p><strong>What We Use Your Wallet For</strong></p>
+        <p>Your wallet is used for authentication and room access checks only. We use server-issued message signing to prove wallet ownership, and token checks for gated rooms.</p>
 
-        <p><strong>Security Model</strong></p>
-        <p>Authorization decisions are server-side only. Client-side checks are used for UX but are never trusted for room admission. Wallet addresses are not broadcast to normal users; wallet reveal is restricted to staff roles when enabled.</p>
+        <p><strong>Privacy Defaults</strong></p>
+        <p>Authorization decisions happen server-side. Client-side checks are only for UX and are not trusted for admission. Wallet addresses are not broadcast to normal users; wallet reveal is restricted to staff roles when enabled.</p>
 
-        <p><strong>Relay Security</strong></p>
-        <p>Token checks can be routed through a secured relay endpoint protected by a shared secret header. In production, relay traffic should use HTTPS on a domain endpoint with rate limiting and secret rotation.</p>
+        <p><strong>Production Security Controls</strong></p>
+        <p>Relay token checks are protected with shared-secret auth over HTTPS, with rate limiting and secret rotation support. Signature challenges are nonce-based to reduce replay risk.</p>
 
-        <p><strong>Operational Notes</strong></p>
-        <p>For reliability, keep secrets in environment variables, pin dependency versions, and rotate secrets periodically. Keep debug logging disabled in production unless actively troubleshooting.</p>
+        <p><strong>What This Means For You</strong></p>
+        <p>You can verify wallet prompts in Phantom before signing. No one should ask you for private keys or seed phrases. If anything looks off, disconnect and reconnect wallet from trusted pages only.</p>
       </div>
     </div>
   </div>
@@ -298,7 +299,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5.5.2/dist/iro.min.js"></script>
   <div id="sidebar-backdrop" class="hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-  <script src="chat.js?v=18"></script>
+  <script src="chat.js?v=19"></script>
 </body>
 
 </html>
