@@ -1489,40 +1489,6 @@ async function appendChatMessage(data, isHistory = false) {
 
     const unescapedText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
     const msgTextEl = div.querySelector('.msg-text');
-    // ... rest of appendChatMessage ...
-}
-
-function updateMessageReactions(msgId, reactions) {
-    const msgDiv = document.getElementById(`msg-${msgId}`);
-    if (!msgDiv) return;
-
-    // Remove existing reactions bar
-    const existing = msgDiv.querySelector('.msg-reactions');
-    if (existing) existing.remove();
-
-    if (!reactions || Object.keys(reactions).length === 0) return;
-
-    const reactionsBar = document.createElement('div');
-    reactionsBar.className = 'msg-reactions';
-
-    Object.entries(reactions).forEach(([emoji, users]) => {
-        if (!Array.isArray(users) || users.length === 0) return;
-
-        const pill = document.createElement('button');
-        pill.className = 'reaction-pill';
-        if (users.includes(currentUsername)) pill.classList.add('active');
-        pill.title = users.join(', ');
-        pill.innerHTML = `<span class="reaction-emoji">${emoji}</span> <span class="reaction-count">${users.length}</span>`;
-
-        pill.onclick = (e) => {
-            e.stopPropagation();
-            sendReaction(msgId, emoji);
-        };
-        reactionsBar.appendChild(pill);
-    });
-
-    msgDiv.appendChild(reactionsBar);
-}
 msgTextEl.innerHTML = linkifyText(unescapedText);
 
 const urls = unescapedText.match(/(https?:\/\/[^\s]+)/gi) || [];
@@ -1549,15 +1515,15 @@ div.addEventListener('dblclick', () => {
 });
 
 // Hover Reply Button
-const replyBtn = document.createElement('button');
-replyBtn.className = 'msg-action-reply';
-replyBtn.title = 'Reply';
-replyBtn.innerHTML = '<img src="Comments.svg" alt="Reply">';
-replyBtn.addEventListener('click', (e) => {
+const hoverReplyBtn = document.createElement('button');
+hoverReplyBtn.className = 'msg-action-reply';
+hoverReplyBtn.title = 'Reply';
+hoverReplyBtn.innerHTML = '<img src="Comments.svg" alt="Reply">';
+hoverReplyBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     initiateReply(data);
 });
-div.appendChild(replyBtn);
+div.appendChild(hoverReplyBtn);
 
 DOM.chatMessages.appendChild(div);
 
