@@ -1664,36 +1664,47 @@ body {
 
 #reply-bar {
   position: absolute;
-  bottom: 100%;
-  /* Sits directly on top of input */
+  bottom: 0px;
+  /* Shifted down to overlap properly or sit flush */
   left: 0;
   right: 0;
   background: var(--bg-surface);
-  padding: 8px 16px;
-  border-radius: 24px 24px 0 0;
+  padding: 10px 16px;
+  border-radius: 20px 20px 0 0;
   border: 1px solid var(--border);
-  border-bottom: none;
-  /* Merge */
+  border-bottom: 2px solid var(--bg-surface);
+  /* Hide the seam */
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
   color: var(--text-muted);
   z-index: 10;
-  margin-bottom: -1px;
-  /* Overlap border */
+  transform: translateY(-100%);
+  animation: slideUp 0.15s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(-80%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(-100%);
+    opacity: 1;
+  }
 }
 
 #reply-bar.hidden {
   display: none;
 }
 
-/* When reply is visible, flatten top input corners */
 #chat-input-area:has(#reply-bar:not(.hidden)) {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  border-top-color: transparent;
-  /* Seamless merge */
+  border-top-left-radius: 8px;
+  /* Slightly rounded but not 50px */
+  border-top-right-radius: 8px;
+  border-top-color: var(--border);
 }
 
 /* Re-adding Reply Content Styles */
@@ -1722,13 +1733,19 @@ body {
 }
 
 #btn-cancel-reply {
-  background: none;
-  border: none;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 16px;
-  padding: 4px;
-  line-height: 1;
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 #btn-cancel-reply:hover {

@@ -68,12 +68,14 @@ function connectWebSocket(roomId) {
 
         switch (data.type) {
             case 'identity':
-                console.log('[IDENTITY] Role:', { isOwner: data.isOwner, isAdmin: data.isAdmin, isMod: data.isMod });
+                console.log('[IDENTITY] info:', data);
                 isOwner = data.isOwner;
                 isAdmin = data.isAdmin;
                 isMod = data.isMod;
+                if (data.wallet) currentWalletAddress = data.wallet;
+                if (data.username) currentUsername = data.username;
                 if (data.color) userColor = data.color;
-                // Update UI if needed (e.g. show admin panel)
+
                 if (isAdmin || isOwner || isMod) {
                     document.body.classList.add('is-staff');
                 }
@@ -207,6 +209,7 @@ function connectWebSocket(roomId) {
                 break;
 
             case 'reaction-update':
+                console.log('[REACTION-UPDATE] received:', data);
                 updateMessageReactions(data.messageId, data.reactions);
                 break;
 
@@ -1829,11 +1832,17 @@ async function appendSystemMessage(data) {
 
 function updateMessageReactions(msgId, reactions) {
     const msgDiv = document.getElementById(`msg-${msgId}`);
-    if (!msgDiv) return;
+    if (!msgDiv) {
+        console.warn(`[REACTION] Message element msg-${msgId} not found in DOM`);
+        return;
+    }
 
     const container = msgDiv.querySelector('.msg-reactions');
     if (container) {
+        console.log(`[REACTION] Updating container for msg-${msgId}`);
         renderReactionsInto(container, msgId, reactions);
+    } else {
+        console.warn(`[REACTION] Container .msg-reactions not found in msg-${msgId}`);
     }
 }
 
