@@ -2200,18 +2200,37 @@ const replyToUser = document.getElementById('reply-to-user');
 const replyPreview = document.getElementById('reply-text-preview');
 const btnCancelReply = document.getElementById('btn-cancel-reply');
 
-function initiateReply(msgId, text, username, color) {
+function initiateReply(msgIdOrReply, text, username, color) {
+    let msgId = msgIdOrReply;
+    let msgText = text;
+    let msgUser = username;
+    let msgColor = color;
+
+    // Backward-compatible shape support: initiateReply({ id, text, username, color })
+    if (msgIdOrReply && typeof msgIdOrReply === 'object') {
+        msgId = msgIdOrReply.id;
+        msgText = msgIdOrReply.text;
+        msgUser = msgIdOrReply.username;
+        msgColor = msgIdOrReply.color;
+    }
+
+    if (!msgId || !msgUser) return;
+
     console.log('Replying to:', msgId);
-    replyContext = { id: msgId, text: text, username: username, color: color };
+    replyContext = { id: msgId, text: msgText, username: msgUser, color: msgColor };
 
     const replyBar = document.getElementById('reply-bar');
     const replyUser = document.getElementById('reply-to-user');
     const replyPreview = document.getElementById('reply-text-preview');
 
     if (replyBar && replyUser && replyPreview) {
-        replyUser.textContent = username;
-        if (color) replyUser.style.color = color;
-        replyPreview.textContent = text;
+        replyUser.textContent = msgUser;
+        if (msgColor) {
+            replyUser.style.color = msgColor;
+        } else {
+            replyUser.style.color = '';
+        }
+        replyPreview.textContent = msgText || '';
         replyBar.classList.remove('hidden');
         DOM.chatInput.focus();
     }
@@ -2225,6 +2244,7 @@ function cancelReply() {
     replyContext = null;
     if (replyBar) replyBar.classList.add('hidden');
     if (replyToUser) replyToUser.textContent = '';
+    if (replyToUser) replyToUser.style.color = '';
     if (replyPreview) replyPreview.textContent = '';
 }
 

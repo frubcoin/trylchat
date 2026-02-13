@@ -64,6 +64,16 @@ function getRandomColor() {
   return RETRO_COLORS[Math.floor(Math.random() * RETRO_COLORS.length)];
 }
 
+function getDeterministicPaletteColor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % RETRO_COLORS.length;
+  return RETRO_COLORS[index];
+}
+
 const MAX_HISTORY = 200;
 const HISTORY_ON_JOIN = 100;
 
@@ -78,6 +88,11 @@ const MAX_MESSAGES_PER_WINDOW = 5;
 type GameState = "IDLE" | "READY" | "GO";
 
 export default class NekoChat implements Party.Server {
+  private getReplyColorForIdentity(username: string, wallet?: string | null): string {
+    const seed = (wallet || username || "").toLowerCase().trim();
+    return getDeterministicPaletteColor(seed || "guest");
+  }
+
   private getAdminWallets(): string[] {
     const adminWallets = (this.room.env.ADMIN_WALLETS as string) || "";
     return adminWallets.split(",").map(w => w.trim()).filter(Boolean);
@@ -745,13 +760,63 @@ export default class NekoChat implements Party.Server {
       recent.push(now);
       this.rateLimits.set(sender.id, recent);
 
+      const history =
+        ((await this.room.storage.get("chatHistory")) as any[]) || [];
+
+      let normalizedReply: any = null;
+      if (parsed.replyTo && typeof parsed.replyTo === "object") {
+        const rawReply = parsed.replyTo as any;
+        const requestedId = String(rawReply.id || "").trim();
+
+        const referencedMsg = requestedId
+          ? history.find((m: any) => m?.id === requestedId && m?.msgType === "chat")
+          : null;
+
+        const baseUsername = (referencedMsg?.username ?? rawReply.username ?? "")
+          .replace(/[<>&"']/g, "")
+          .trim()
+          .substring(0, 20);
+
+        const baseText = (referencedMsg?.text ?? rawReply.text ?? "")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .trim()
+          .substring(0, 400);
+
+        if (baseUsername && baseText) {
+          let targetWallet: string | null = referencedMsg?.wallet || null;
+
+          if (!targetWallet) {
+            for (const conn of this.room.getConnections()) {
+              const s = conn.state as any;
+              if (s?.username === baseUsername && s?.wallet) {
+                targetWallet = s.wallet;
+                break;
+              }
+            }
+          }
+
+          if (!targetWallet) {
+            const walletLog = (await this.room.storage.get("walletLog") as Record<string, string>) || {};
+            targetWallet = walletLog[baseUsername] || null;
+          }
+
+          normalizedReply = {
+            id: referencedMsg?.id || requestedId || null,
+            username: baseUsername,
+            text: baseText,
+            color: this.getReplyColorForIdentity(baseUsername, targetWallet),
+          };
+        }
+      }
+
       const msgData = {
         id: crypto.randomUUID(),
         msgType: "chat",
         username,
         color,
         text,
-        replyTo: parsed.replyTo || null,
+        replyTo: normalizedReply,
         wallet,
         isAdmin,
         isMod,
@@ -759,39 +824,6 @@ export default class NekoChat implements Party.Server {
         canEmbedUrls,
         timestamp: Date.now(),
       };
-
-      // Inject color for replyTo user if present
-      if (msgData.replyTo && msgData.replyTo.username) {
-        // 1. Check active users
-        let targetColor = null;
-        for (const conn of this.room.getConnections()) {
-          const s = conn.state as any;
-          if (s && s.username === msgData.replyTo.username) {
-            targetColor = s.color;
-            break;
-          }
-        }
-
-        // 2. Use existing color if valid
-        if (!targetColor && msgData.replyTo.color) {
-          targetColor = msgData.replyTo.color;
-        }
-
-        // 3. Fallback to consistent hash -> color
-        if (!targetColor) {
-          // Simple hash function for consistent colors for offline users
-          let hash = 0;
-          for (let i = 0; i < msgData.replyTo.username.length; i++) {
-            hash = msgData.replyTo.username.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-          targetColor = "#" + "00000".substring(0, 6 - c.length) + c;
-        }
-
-        if (targetColor) {
-          msgData.replyTo.color = targetColor;
-        }
-      }
 
       // Create separate object for broadcast (exclude wallet for privacy)
       // Use last 6 chars of wallet as a grouping ID (sufficient collision resistance for this context)
@@ -827,8 +859,6 @@ export default class NekoChat implements Party.Server {
       // We can add senderId to msgData too if we want it in history
       (msgData as any).senderId = senderId;
 
-      const history =
-        ((await this.room.storage.get("chatHistory")) as any[]) || [];
       history.push(msgData);
       await this.room.storage.put(
         "chatHistory",
