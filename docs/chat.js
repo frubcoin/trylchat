@@ -18,6 +18,14 @@ const ROOMS = [
 
 let pendingTranslations = new Map(); // text -> resolve function
 
+let currentUsername = '';
+let currentWallet = null;
+let currentRoom = 'main-lobby';
+let hasToken = false;
+let currentSignature = null;
+let currentSignMsg = null;
+let currentWalletAddress = null;
+
 function getWsUrl(roomId) {
     return `${WS_PROTOCOL}://${PARTYKIT_HOST}/party/${roomId}`;
 }
@@ -290,7 +298,11 @@ function renderRoomList() {
 
     ROOMS.forEach(room => {
         const li = document.createElement('li');
-        li.className = 'room-item' + (room.id === currentRoom ? ' active' : '');
+        // 'currentRoom' is global, make sure it is defined at the top of the file
+        li.className = 'room-item active';
+        if (room.id !== currentRoom) {
+            li.className = 'room-item';
+        }
 
         const isLocked = room.gated && !hasToken;
         li.innerHTML = `
