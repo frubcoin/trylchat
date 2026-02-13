@@ -665,6 +665,7 @@ function initCustomUI() {
         }
     });
 
+
     // Commands
     const btnCommands = document.getElementById('btn-commands');
     if (btnCommands) {
@@ -744,40 +745,82 @@ function initCustomUI() {
         });
     }
 
+    // Sidebar Resizing (Manual)
+    const sidebarLeft = document.getElementById('rooms-sidebar');
+    const sidebarRight = document.getElementById('sidebar');
+
+    function setupResizer(resizerId, sidebar, isRight) {
+        const resizer = document.getElementById(resizerId);
+        if (!resizer || !sidebar) return;
+
+        // Load saved width
+        const savedWidth = localStorage.getItem(sidebar.id + '_width');
+        if (savedWidth) sidebar.style.width = savedWidth + 'px';
+
+        resizer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            document.body.style.cursor = 'col-resize';
+            document.body.classList.add('resizing');
+
+            const startX = e.clientX;
+            const startWidth = parseInt(window.getComputedStyle(sidebar).width, 10);
+
+            const onMouseMove = (e) => {
+                let newWidth;
+                if (isRight) {
+                    // Right sidebar: dragging LEFT increases width (startX > currentX)
+                    // Delta = startX - currentX
+                    newWidth = startWidth + (startX - e.clientX);
+                } else {
+                    // Left sidebar: dragging RIGHT increases width (currentX > startX)
+                    // Delta = currentX - startX
+                    newWidth = startWidth + (e.clientX - startX);
+                }
+
+                // Clamp
+                newWidth = Math.max(200, Math.min(600, newWidth));
+                sidebar.style.width = newWidth + 'px';
+            };
+
+            const onMouseUp = () => {
+                document.body.style.cursor = '';
+                document.body.classList.remove('resizing');
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+
+                // Save
+                localStorage.setItem(sidebar.id + '_width', sidebar.style.width.replace('px', ''));
+            };
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
+    setupResizer('resizer-left', sidebarLeft, false);
+    setupResizer('resizer-right', sidebarRight, true);
+
     // Scaling
     const scaleSlider = document.getElementById('scale-slider');
     const btnZoomReset = document.getElementById('btn-zoom-reset');
-    console.log('[UI] Scaling:', { slider: !!scaleSlider, reset: !!btnZoomReset });
-
-    function initUIScale() {
-        const savedScale = localStorage.getItem('ui_scale') || '1';
-        document.documentElement.style.setProperty('--ui-scale', savedScale);
-        if (scaleSlider) scaleSlider.value = savedScale;
-    }
-    initUIScale();
 
     function updateScale(val) {
         let scale = parseFloat(val);
-        scale = Math.max(0.5, Math.min(2.0, scale)); // Clamp
-
+        scale = Math.max(0.5, Math.min(2.0, scale));
         document.documentElement.style.setProperty('--ui-scale', scale);
-        localStorage.setItem('ui_scale', scale); // Persist!
-
+        localStorage.setItem('ui_scale', scale);
         if (scaleSlider) scaleSlider.value = scale;
     }
 
-    if (scaleSlider) {
-        scaleSlider.addEventListener('input', (e) => {
-            console.log('[UI] Slider input:', e.target.value);
-            updateScale(e.target.value);
-        });
-    }
+    // Init
+    const savedScale = localStorage.getItem('ui_scale') || '1';
+    updateScale(savedScale);
 
+    if (scaleSlider) {
+        scaleSlider.addEventListener('input', (e) => updateScale(e.target.value));
+    }
     if (btnZoomReset) {
-        btnZoomReset.addEventListener('click', () => {
-            console.log('[UI] Reset clicked');
-            updateScale(1.0);
-        });
+        btnZoomReset.addEventListener('click', () => updateScale(1.0));
     }
 }
 
