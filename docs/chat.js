@@ -1758,6 +1758,31 @@ function cancelReply() {
 const btnScrollTop = document.getElementById('btn-scroll-top');
 const btnScrollBottom = document.getElementById('btn-scroll-bottom');
 
+function updateScrollButtons() {
+    if (!DOM.chatMessages) return;
+    const { scrollTop, scrollHeight, clientHeight } = DOM.chatMessages;
+
+    // Show Top button if scrolled down more than 200px
+    if (scrollTop > 200) {
+        btnScrollTop?.classList.remove('hidden');
+    } else {
+        btnScrollTop?.classList.add('hidden');
+    }
+
+    // Show Bottom button if not near bottom (allow 50px buffer)
+    if (scrollHeight - scrollTop - clientHeight > 50) {
+        btnScrollBottom?.classList.remove('hidden');
+    } else {
+        btnScrollBottom?.classList.add('hidden');
+    }
+}
+
+if (DOM.chatMessages) {
+    DOM.chatMessages.addEventListener('scroll', () => {
+        updateScrollButtons();
+    });
+}
+
 if (btnScrollTop) {
     btnScrollTop.addEventListener('click', () => {
         if (DOM.chatMessages) {
