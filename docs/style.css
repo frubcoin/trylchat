@@ -1610,8 +1610,9 @@ body {
   width: 100%;
   max-width: 900px;
   margin: 0 auto 16px;
-  overflow: hidden;
-  /* Prevent text overflow bleeding */
+  overflow: visible;
+  /* Allow pickers to show */
+  z-index: 2000;
 }
 
 #chat-input {
@@ -2000,7 +2001,7 @@ body.resizing .resize-handle {
 
 .reaction-pill {
   background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 2px 6px;
   font-size: 11px;

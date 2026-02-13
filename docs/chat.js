@@ -202,6 +202,9 @@ function connectWebSocket(roomId) {
             case 'game-series-end':
                 if (currentUsername) showGameOverlay('series-end', data);
                 break;
+            case 'help-list':
+                appendHelpMessage(data.commands);
+                break;
 
             case 'reaction-update':
                 updateMessageReactions(data.messageId, data.reactions);
@@ -658,90 +661,10 @@ const COMMANDS_DATA = {
 function initCustomUI() {
     console.log('[UI] Initializing UI elements...');
 
-    // Debug clicks
-    document.addEventListener('click', (e) => {
-        if (e.target.closest('#btn-commands')) {
-            console.log('[UI] Document saw command btn click');
-        }
-    });
+    // Color & Emoji pickers handled via absolute positioning
+    // /help lists commands
 
 
-    // Commands
-    const btnCommands = document.getElementById('btn-commands');
-    if (btnCommands) {
-
-        btnCommands.addEventListener('click', (e) => {
-            console.log('[UI] Command button clicked');
-            e.stopPropagation();
-
-            // Close others
-            document.getElementById('emoji-picker-container')?.classList.add('hidden');
-            document.getElementById('color-picker-popover')?.classList.add('hidden');
-
-            const existing = document.getElementById('command-palette-overlay');
-            if (existing) {
-                existing.remove();
-                return;
-            }
-
-            // Create Palette Modal
-            const overlay = document.createElement('div');
-            overlay.id = 'command-palette-overlay';
-
-            const role = isOwner ? 'owner' : (isAdmin ? 'admin' : (isMod ? 'mod' : 'user'));
-            let availablecommands = [...COMMANDS_DATA.user];
-            if (isMod || isAdmin || isOwner) availablecommands = [...availablecommands, ...COMMANDS_DATA.mod];
-            if (isAdmin || isOwner) availablecommands = [...availablecommands, ...COMMANDS_DATA.admin];
-            if (isOwner) availablecommands = [...availablecommands, ...COMMANDS_DATA.owner];
-
-            overlay.innerHTML = `
-                <div class="palette-container">
-                    <div class="palette-header">
-                        <h3>Commands (${role.toUpperCase()})</h3>
-                        <span style="font-size:10px; opacity:0.6; color:var(--text-muted)">ESC to close</span>
-                    </div>
-                    <div class="palette-list">
-                        ${availablecommands.length ? availablecommands.map(c => `
-                            <div class="palette-item" data-cmd="${c.cmd.split(' ')[0]} ">
-                                <div class="palette-cmd">${c.cmd}</div>
-                                <div class="palette-desc">${c.desc}</div>
-                            </div>
-                        `).join('') : '<div style="padding:40px; text-align:center; color:var(--text-muted)">No commands found for your role.</div>'}
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(overlay);
-            console.log('[PALETTE] Modal appended to body');
-
-            // Add click listeners
-            overlay.querySelectorAll('.palette-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const cmd = item.getAttribute('data-cmd');
-                    DOM.chatInput.value = cmd;
-                    DOM.chatInput.focus();
-                    overlay.remove();
-                    window.removeEventListener('keydown', handleEsc);
-                });
-            });
-
-            // Close logic (backdrop)
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    overlay.remove();
-                    window.removeEventListener('keydown', handleEsc);
-                }
-            });
-
-            const handleEsc = (e) => {
-                if (e.key === 'Escape') {
-                    overlay.remove();
-                    window.removeEventListener('keydown', handleEsc);
-                }
-            };
-            window.addEventListener('keydown', handleEsc);
-        });
-    }
 
     // Sidebar Resizing (Manual)
     const sidebarLeft = document.getElementById('rooms-sidebar');
@@ -1866,6 +1789,30 @@ function initiateReaction(msgId, anchorBtn) {
     };
     setTimeout(() => document.addEventListener('mousedown', closeListener), 0);
 }
+
+async function appendHelpMessage(commands) {
+    const div = document.createElement('div');
+    div.className = 'system-msg help-msg';
+    div.innerHTML = `
+        <div class="help-header">Available Commands</div>
+        <div class="help-list">
+            ${commands.map(c => `
+                <div class="help-item" title="Click to use">
+                    <span class="help-cmd" onclick="fillInput('${c.cmd}')">${c.cmd}</span>
+                    <span class="help-desc">${c.desc}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    DOM.chatMessages.appendChild(div);
+    scrollToBottom();
+}
+
+// Global helper for clickable commands
+window.fillInput = (text) => {
+    DOM.chatInput.value = text.split(' ')[0] + ' ';
+    DOM.chatInput.focus();
+};
 
 async function appendSystemMessage(data) {
     if (data.id && document.getElementById(`msg-${data.id}`)) {

@@ -683,10 +683,16 @@ export default class NekoChat implements Party.Server {
 
       if (!username) return;
 
-      // Handle Admin/Mod/Owner Commands
-      if ((isAdmin || isMod || isOwner) && parsed.text.startsWith("/")) {
-        await this.handleCommand(parsed.text, sender, { isAdmin, isMod, isOwner, wallet });
-        return;
+      const isCommand = parsed.text.startsWith("/");
+      const isAdminOrMod = isAdmin || isMod || isOwner;
+
+      if (isCommand) {
+        const cmd = parsed.text.trim().split(/\s+/)[0].toLowerCase();
+        // Allow /help for everyone, other commands require admin/mod
+        if (cmd === "/help" || isAdminOrMod) {
+          await this.handleCommand(parsed.text, sender, { isAdmin, isMod, isOwner, wallet });
+          return;
+        }
       }
 
       // Block /clear for normal users
@@ -1016,6 +1022,46 @@ export default class NekoChat implements Party.Server {
     const fullArg = parts.slice(1).join(" ");
 
     const { isAdmin, isMod, isOwner } = ctx;
+
+    if (command === "/help") {
+      const available: { cmd: string, desc: string }[] = [
+        { cmd: "/help", desc: "List available commands" },
+        { cmd: "/clear", desc: "Clear your local chat history" }
+      ];
+
+      if (isMod || isAdmin || isOwner) {
+        available.push(
+          { cmd: "/mute <user>", desc: "Mute/unmute a user" },
+          { cmd: "/clear", desc: "Clear global chat (or /clear <n> / /clear <wallet>)" },
+          { cmd: "/pin <text>", desc: "Pin a message" },
+          { cmd: "/unpin", desc: "Unpin current message" },
+          { cmd: "/ra <wallet>", desc: "Remove from whitelist" },
+          { cmd: "/aa <wallet>", desc: "Add to whitelist" },
+          { cmd: "/permission url <wallet>", desc: "Grant URL sharing permission" }
+        );
+      }
+
+      if (isAdmin || isOwner) {
+        available.push(
+          { cmd: "/mod add <wallet>", desc: "Promote to Mod" },
+          { cmd: "/mod remove <wallet>", desc: "Demote from Mod" },
+          { cmd: "/whitelist bulk <csv>", desc: "Bulk whitelist wallets" }
+        );
+      }
+
+      if (isOwner) {
+        available.push(
+          { cmd: "/admin add <wallet>", desc: "Promote to Admin" },
+          { cmd: "/admin remove <wallet>", desc: "Demote from Admin" }
+        );
+      }
+
+      sender.send(JSON.stringify({
+        type: "help-list",
+        commands: available
+      }));
+      return;
+    }
 
     // ADMIN/OWNER: Manage Moderators
     if ((isAdmin || isOwner) && command === "/mod") {
