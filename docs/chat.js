@@ -644,7 +644,7 @@ const COMMANDS_DATA = {
 };
 
 // ═══ APPEARANCE UI ═══
-document.addEventListener('DOMContentLoaded', () => {
+function initCustomUI() {
     console.log('[UI] Initializing UI elements...');
 
     // Commands
@@ -713,7 +713,13 @@ document.addEventListener('DOMContentLoaded', () => {
             updateScale(1.0);
         });
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCustomUI);
+} else {
+    initCustomUI();
+}
 
 // Helper for command rendering (moved from inline)
 function updateCommandList() {
