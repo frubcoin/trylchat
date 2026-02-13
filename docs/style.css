@@ -1789,6 +1789,35 @@ body {
   flex-direction: column;
   flex-shrink: 0;
   z-index: 100;
+  position: relative;
+  /* For handle positioning */
+  transition: width 0.0s;
+  /* Disable transition during drag */
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 101;
+  transition: background 0.2s;
+}
+
+#resizer-left {
+  right: -3px;
+  /* Center on border */
+}
+
+#resizer-right {
+  left: -3px;
+  /* Center on border */
+}
+
+.resize-handle:hover,
+body.resizing .resize-handle {
+  background: rgba(var(--accent-rgb), 0.5);
 }
 
 .sidebar-footer {
@@ -1989,18 +2018,26 @@ body {
 /* ═══ COMMAND POPOVER ═══ */
 #command-popover {
   position: absolute;
-  bottom: 50px;
+  /* Default, overridden by JS */
+  bottom: 0;
   right: 0;
   width: 250px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  z-index: 2000;
-  overflow: hidden;
+  z-index: 99999;
+  /* Max Z-index */
+  overflow: visible;
+  /* Ensure content shows */
   font-family: var(--font-body);
   display: flex;
   flex-direction: column;
+}
+
+font-family: var(--font-body);
+display: flex;
+flex-direction: column;
 }
 
 .command-header {
