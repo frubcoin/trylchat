@@ -1780,7 +1780,7 @@ height: 40px;
 }
 
 /* SIDEBAR FOOTER */
-.#sidebar,
+#sidebar,
 #rooms-sidebar {
   width: 280px;
   /* Increased from 250px */
