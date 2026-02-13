@@ -22,7 +22,7 @@ Available to **Moderators** and **Admins**.
 | **Pin Message** | `/pin <message>` | Pins a message to the top of the chat area. |
 | **Unpin** | `/unpin` | Removes the currently pinned message. |
 | **Whitelist** | `/aa <wallet>` | **Add Access**: shortcuts to add a wallet to the whitelist. Grants access to holder rooms. |
-| | `/ra <wallet>` | **Remove Access**: shortcuts to remove a wallet from the whitelist. |
+| | `/ra <wallet>` | **Remove Access**: shortcuts to remove a wallet from the holder room. |
 | | `/whitelist <wallet>` | Adds a wallet to the whitelist. |
 | | `/whitelist remove <wallet>` | Removes a wallet from the whitelist. |
 | | `/whitelist bulk <csv>` | Adds multiple wallets from a comma-separated list. |

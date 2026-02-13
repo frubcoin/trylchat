@@ -597,6 +597,103 @@ function createFallbackColorPicker() {
     popover.appendChild(colorInput);
     popover.classList.remove('hidden');
 }
+popover.appendChild(colorInput);
+popover.classList.remove('hidden');
+}
+
+// ═══ COMMANDS UI ═══
+const COMMANDS_DATA = {
+    user: [
+        { cmd: '/clear', desc: 'Clear your local chat history' },
+    ],
+    mod: [
+        { cmd: '/mute <user>', desc: 'Mute a user' },
+        { cmd: '/ban <wallet>', desc: 'Ban a user (remove from whitelist)' },
+        { cmd: '/clear', desc: 'Clear chat for everyone' },
+        { cmd: '/clear <n>', desc: 'Clear last N messages' },
+        { cmd: '/pin <msg>', desc: 'Pin a message' },
+        { cmd: '/unpin', desc: 'Unpin message' }
+    ],
+    admin: [
+        { cmd: '/aa <wallet>', desc: 'Add to whitelist' },
+        { cmd: '/ra <wallet>', desc: 'Remove from whitelist' },
+        { cmd: '/whitelist bulk', desc: 'Bulk add wallets' },
+        { cmd: '/mod add <wallet>', desc: 'Add moderator' },
+        { cmd: '/mod remove <wallet>', desc: 'Remove moderator' },
+        { cmd: '/permission url <wallet>', desc: 'Grant URL permission' }
+    ],
+    owner: [
+        { cmd: '/admin add <wallet>', desc: 'Add admin' },
+        { cmd: '/admin remove <wallet>', desc: 'Remove admin' }
+    ]
+};
+
+const btnCommands = document.getElementById('btn-commands');
+const commandPopover = document.getElementById('command-popover');
+
+if (btnCommands && commandPopover) {
+    btnCommands.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = commandPopover.classList.contains('hidden');
+
+        // Close others
+        document.getElementById('emoji-picker-container')?.classList.add('hidden');
+        document.getElementById('color-picker-popover')?.classList.add('hidden');
+
+        if (!isHidden) {
+            commandPopover.classList.add('hidden');
+            return;
+        }
+
+        // Build list based on role
+        const role = isOwner ? 'owner' : (isAdmin ? 'admin' : (isMod ? 'mod' : 'user'));
+        let availablecommands = [...COMMANDS_DATA.user]; // Everyone gets user cmds
+
+        if (isMod || isAdmin || isOwner) {
+            availablecommands = [...availablecommands, ...COMMANDS_DATA.mod];
+        }
+        if (isAdmin || isOwner) {
+            availablecommands = [...availablecommands, ...COMMANDS_DATA.admin];
+        }
+        if (isOwner) {
+            availablecommands = [...availablecommands, ...COMMANDS_DATA.owner];
+        }
+
+        commandPopover.innerHTML = `
+            <div class="command-header">
+                <span>Available Commands (${role.toUpperCase()})</span>
+                <span style="font-size:10px; opacity:0.7">Click to use</span>
+            </div>
+            <div class="command-list">
+                ${availablecommands.map(c => `
+                    <div class="command-item" data-cmd="${c.cmd.split(' ')[0]} ">
+                        <div class="cmd-code">${c.cmd}</div>
+                        <div class="cmd-desc">${c.desc}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        commandPopover.classList.remove('hidden');
+
+        // Add click listeners to items
+        commandPopover.querySelectorAll('.command-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const cmd = item.dataset.cmd;
+                DOM.chatInput.value = cmd;
+                DOM.chatInput.focus();
+                commandPopover.classList.add('hidden');
+            });
+        });
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!commandPopover.contains(e.target) && e.target !== btnCommands) {
+            commandPopover.classList.add('hidden');
+        }
+    });
+}
 
 function loadWalletColor(wallet) {
     if (!wallet) return;

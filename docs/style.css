@@ -1940,12 +1940,41 @@ body {
   }
 }
 
+font-size: 13px;
+color: var(--text-secondary);
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
 
+.command-list {
+  padding: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
 
+.command-item {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.2s;
+}
 
+.command-item:hover {
+  background: var(--bg-hover);
+}
 
-.scroll-btn.hidden {
-  opacity: 0.3;
-  pointer-events: none;
-  filter: grayscale(1);
+.cmd-code {
+  font-family: monospace;
+  color: #a3e635;
+  /* lime-400 */
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.cmd-desc {
+  font-size: 11px;
+  color: var(--text-muted);
 }
