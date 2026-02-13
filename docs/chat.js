@@ -100,16 +100,14 @@ function connectWebSocket(roomId) {
                 updateVisitorCount(data.count);
                 break;
 
-            case 'reaction-update':
-                const targetMsg = document.getElementById(`msg-${data.messageId}`);
-                if (targetMsg) {
-                    const wasNearBottom = isNearBottom();
-                    updateMessageReactions(targetMsg, data.reactions);
-                    if (wasNearBottom) {
-                        scrollToBottom();
-                    }
+            case 'reaction-update': {
+                const wasNearBottom = isNearBottom();
+                updateMessageReactions(data.messageId, data.reactions);
+                if (wasNearBottom) {
+                    scrollToBottom();
                 }
                 break;
+            }
             case 'admin-reveal':
                 const msgEl = document.getElementById(`msg-${data.msgId}`);
                 if (msgEl) {
@@ -206,11 +204,6 @@ function connectWebSocket(roomId) {
                 break;
             case 'help-list':
                 appendHelpMessage(data.commands);
-                break;
-
-            case 'reaction-update':
-                console.log('[REACTION-UPDATE] received:', data);
-                updateMessageReactions(data.messageId, data.reactions);
                 break;
 
         }
@@ -1284,6 +1277,7 @@ function updateTypingIndicator(users) {
 
     if (count === 0) {
         DOM.typingIndicator.classList.add('hidden');
+        DOM.typingIndicator.style.display = 'none';
         DOM.typingIndicator.textContent = '';
         console.log('[TYPING] Hidden');
         return;
@@ -1306,6 +1300,9 @@ function updateTypingIndicator(users) {
 
     DOM.typingIndicator.textContent = label;
     DOM.typingIndicator.classList.remove('hidden');
+    DOM.typingIndicator.style.display = 'flex';
+    DOM.typingIndicator.style.opacity = '1';
+    DOM.typingIndicator.style.transform = 'none';
     console.log('[TYPING] Visible:', label, DOM.typingIndicator);
 }
 
