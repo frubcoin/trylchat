@@ -1604,9 +1604,11 @@ function renderReactionsInto(container, msgId, reactions) {
     Object.entries(reactions).forEach(([emoji, users]) => {
         if (!Array.isArray(users) || users.length === 0) return;
 
-        const pill = document.createElement('button');
+        const pill = document.createElement('div');
         pill.className = 'reaction-pill';
-        if (users.includes(currentUsername)) pill.classList.add('active');
+        if (currentUsername && users.includes(currentUsername)) {
+            pill.classList.add('active');
+        }
         pill.title = users.join(', ');
         pill.innerHTML = `<span class="reaction-emoji">${emoji}</span> <span class="reaction-count">${users.length}</span>`;
 
