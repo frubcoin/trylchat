@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Jersey+10&display=swap"
     rel="stylesheet">
   <link rel="preload" href="fonts/GeistPixel.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 </head>
 
@@ -243,6 +243,9 @@
             <span id="counter-value">0</span>
           </div>
         </div>
+        <div class="sidebar-section">
+          <button id="btn-info" class="btn-info-panel" type="button">Info & Security</button>
+        </div>
         <!-- Admin Panel (Hidden by default) -->
         <div id="admin-panel" class="hidden">
           <select id="round-select">
@@ -266,11 +269,36 @@
     <div id="game-message">WAIT FOR IT...</div>
   </div>
 
+  <div id="info-overlay" class="hidden" aria-modal="true" role="dialog" aria-labelledby="info-title">
+    <div id="info-panel">
+      <div class="info-header">
+        <h2 id="info-title">About tryl.chat & Security</h2>
+        <button id="btn-info-close" type="button" aria-label="Close info">✕</button>
+      </div>
+      <div class="info-content">
+        <p><strong>App Overview</strong></p>
+        <p>tryl.chat is a real-time, room-based chat app powered by PartyKit with wallet-gated access controls for selected rooms. It supports live messaging, reactions, reply threads, typing indicators, cursors, moderation tools, and a reaction mini-game.</p>
+
+        <p><strong>How Access Control Works</strong></p>
+        <p>When you connect a wallet, the app requests a server-issued auth challenge and signs it with Phantom. The server verifies that signature before allowing join. For token-gated rooms, the server performs token ownership checks through a trusted relay and only then grants access.</p>
+
+        <p><strong>Security Model</strong></p>
+        <p>Authorization decisions are server-side only. Client-side checks are used for UX but are never trusted for room admission. Wallet addresses are not broadcast to normal users; wallet reveal is restricted to staff roles when enabled.</p>
+
+        <p><strong>Relay Security</strong></p>
+        <p>Token checks can be routed through a secured relay endpoint protected by a shared secret header. In production, relay traffic should use HTTPS on a domain endpoint with rate limiting and secret rotation.</p>
+
+        <p><strong>Operational Notes</strong></p>
+        <p>For reliability, keep secrets in environment variables, pin dependency versions, and rotate secrets periodically. Keep debug logging disabled in production unless actively troubleshooting.</p>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/emoji-mart@5.6.0/dist/browser.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5.5.2/dist/iro.min.js"></script>
   <div id="sidebar-backdrop" class="hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-  <script src="chat.js?v=16"></script>
+  <script src="chat.js?v=17"></script>
 </body>
 
 </html>

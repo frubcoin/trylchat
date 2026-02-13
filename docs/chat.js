@@ -278,6 +278,10 @@ const DOM = {
     sidebar: document.getElementById('sidebar'),
     sidebarBackdrop: document.getElementById('sidebar-backdrop'),
     languageSelect: document.getElementById('language-select'),
+    btnInfo: document.getElementById('btn-info'),
+    infoOverlay: document.getElementById('info-overlay'),
+    infoPanel: document.getElementById('info-panel'),
+    btnInfoClose: document.getElementById('btn-info-close'),
 };
 
 let userLanguage = 'en';
@@ -293,6 +297,47 @@ try {
         userLanguage = savedLang;
     }
 } catch (e) { }
+
+function openInfoOverlay() {
+    if (!DOM.infoOverlay) return;
+    DOM.infoOverlay.classList.remove('hidden');
+    document.body.classList.remove('mobile-menu-active', 'mobile-users-active');
+}
+
+function closeInfoOverlay() {
+    if (!DOM.infoOverlay) return;
+    DOM.infoOverlay.classList.add('hidden');
+}
+
+if (DOM.btnInfo) {
+    DOM.btnInfo.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openInfoOverlay();
+    });
+}
+
+if (DOM.btnInfoClose) {
+    DOM.btnInfoClose.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeInfoOverlay();
+    });
+}
+
+if (DOM.infoOverlay) {
+    DOM.infoOverlay.addEventListener('click', (e) => {
+        if (e.target === DOM.infoOverlay) closeInfoOverlay();
+    });
+}
+
+if (DOM.infoPanel) {
+    DOM.infoPanel.addEventListener('click', (e) => e.stopPropagation());
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeInfoOverlay();
+});
 
 
 
