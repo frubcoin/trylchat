@@ -144,12 +144,24 @@ body {
   }
 }
 
-#main-layout {
+#chat-page {
   display: flex;
-  height: 100%;
+  flex-direction: column;
   height: 100dvh;
   width: 100%;
   overflow: hidden;
+  position: fixed;
+  /* prevent rubber banding */
+  inset: 0;
+}
+
+#main-layout {
+  display: flex;
+  flex: 1;
+  /* Replace fixed height with flex-grow */
+  min-height: 0;
+  /* Important for nested scroll */
+  width: 100%;
   position: relative;
 }
 
