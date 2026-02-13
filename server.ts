@@ -511,6 +511,7 @@ export default class NekoChat implements Party.Server {
       // Broadcast series start
       this.room.broadcast(JSON.stringify({
         type: "system-message",
+        id: crypto.randomUUID(),
         text: rounds > 1
           ? `⚡ Reaction Game — Best of ${rounds} rounds!`
           : `⚡ Reaction Game — 1 round!`,
@@ -1114,6 +1115,7 @@ export default class NekoChat implements Party.Server {
     if (state?.username) {
       // Broadcast leave message
       const leaveMsg = {
+        id: crypto.randomUUID(),
         msgType: "system",
         text: `✧ ${state.username} has left the chat ✧`,
         timestamp: Date.now(),

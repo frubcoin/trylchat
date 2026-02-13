@@ -1344,6 +1344,10 @@ async function translateText(text, targetLang) {
 }
 
 async function appendChatMessage(data, isHistory = false) {
+    if (data.id && document.getElementById(`msg-${data.id}`)) {
+        console.log('[CHAT] Skipping duplicate message:', data.id);
+        return;
+    }
     if (data.isOwner || data.isMod || data.isAdmin) {
         console.log('[CHAT-RENDER] Badge Data:', {
             user: data.username,
@@ -1580,9 +1584,15 @@ function initiateReaction(msgId, anchorBtn) {
     setTimeout(() => document.addEventListener('mousedown', closeListener), 0);
 }
 
-function appendSystemMessage(data) {
+async function appendSystemMessage(data) {
+    if (data.id && document.getElementById(`msg-${data.id}`)) {
+        return;
+    }
+
     const div = document.createElement('div');
     div.className = 'system-msg';
+    if (data.id) div.id = `msg-${data.id}`;
+    if (data.msgType === 'system') div.classList.add('center-msg');
     div.textContent = data.text;
     DOM.chatMessages.appendChild(div);
 }
