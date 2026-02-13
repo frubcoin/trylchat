@@ -2063,3 +2063,8 @@ input[type=range].scale-slider {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+html {
+  /* Apply scaling to the whole page */
+  zoom: var(--ui-scale, 1);
+}
