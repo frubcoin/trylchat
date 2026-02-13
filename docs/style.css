@@ -2320,3 +2320,22 @@ input[type=range].scale-slider {
 #chat-input-area #typing-indicator.hidden {
   display: none !important;
 }
+
+/* Reply input rounding fix: keep a consistent pill shape and rounded reply bar corners. */
+#chat-input-area {
+  border-radius: 24px;
+}
+
+#chat-input-area:has(#reply-bar:not(.hidden)) {
+  border-radius: 24px;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+}
+
+#chat-input-area #reply-bar {
+  bottom: calc(100% + 8px);
+  border-radius: 24px;
+  border-bottom: 1px solid var(--border);
+  transform: none;
+  animation: none;
+}
