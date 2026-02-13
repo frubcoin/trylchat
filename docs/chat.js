@@ -1611,23 +1611,40 @@ function renderReactionsInto(container, msgId, reactions) {
     container.innerHTML = '';
     if (!reactions || Object.keys(reactions).length === 0) return;
 
-    Object.entries(reactions).forEach(([emoji, users]) => {
-        if (!Array.isArray(users) || users.length === 0) return;
-
-        const pill = document.createElement('div');
-        pill.className = 'reaction-pill';
-        if (currentUsername && users.includes(currentUsername)) {
-            pill.classList.add('active');
-        }
-        pill.title = users.join(', ');
-        pill.innerHTML = `<span class="reaction-emoji">${emoji}</span> <span class="reaction-count">${users.length}</span>`;
-
-        pill.onclick = (e) => {
-            e.stopPropagation();
-            sendReaction(msgId, emoji);
-        };
-        container.appendChild(pill);
+    // Handle legacy (string) or new (object) format
+    // New: { wallet: string|null, username: string }
+    // Old: string
+    const reactionObjects = users.map(u => {
+        if (typeof u === 'string') return { wallet: null, username: u };
+        return u;
     });
+
+    const pill = document.createElement('div');
+    pill.className = 'reaction-pill';
+
+    // Determine if active for current user
+    let isActive = false;
+    if (currentWalletAddress) {
+        isActive = reactionObjects.some(r => r.wallet === currentWalletAddress);
+    } else if (currentUsername) {
+        // Guest fallback or legacy match
+        isActive = reactionObjects.some(r => r.username === currentUsername && !r.wallet);
+    }
+
+    if (isActive) {
+        pill.classList.add('active');
+    }
+
+    const names = reactionObjects.map(r => r.username).join(', ');
+    pill.title = names;
+    pill.innerHTML = `<span class="reaction-emoji">${emoji}</span> <span class="reaction-count">${users.length}</span>`;
+
+    pill.onclick = (e) => {
+        e.stopPropagation();
+        sendReaction(msgId, emoji);
+    };
+    container.appendChild(pill);
+});
 }
 
 

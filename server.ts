@@ -464,19 +464,42 @@ export default class NekoChat implements Party.Server {
         const msg = history[msgIndex];
         if (!msg.reactions) msg.reactions = {};
 
-        // Toggle or Add? Let's implement simple add/overwrite for now, or append?
-        // Usually reactions are per-user. 
-        // Structure: reactions: { "👍": ["user1", "user2"], "🔥": ["user3"] }
+        // Legacy support: if it's an array of strings, convert to objects
+        // But for new logic, we just treat it as an array of reaction entries
+        // Structure: { wallet: string | null, username: string }
 
         if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
 
-        // Prevent duplicate reactions from same user on same emoji
-        if (!msg.reactions[emoji].includes(state.username)) {
-          msg.reactions[emoji].push(state.username);
+        // Fix legacy data if needed (strings to objects)
+        if (msg.reactions[emoji].length > 0 && typeof msg.reactions[emoji][0] === 'string') {
+          msg.reactions[emoji] = msg.reactions[emoji].map((u: string) => ({ wallet: null, username: u }));
+        }
+
+        const reactionList = msg.reactions[emoji] as { wallet: string | null, username: string }[];
+
+        // Check if user has already reacted
+        // If user has wallet, check by wallet. Else by username.
+        let existingIndex = -1;
+        const currentWallet = state.wallet || null;
+
+        if (currentWallet) {
+          existingIndex = reactionList.findIndex(r => r.wallet === currentWallet);
         } else {
-          // Toggle off if already reacted?
-          msg.reactions[emoji] = msg.reactions[emoji].filter((u: string) => u !== state.username);
-          if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+          // Guest or legacy match
+          existingIndex = reactionList.findIndex(r => r.username === state.username && !r.wallet);
+        }
+
+        if (existingIndex === -1) {
+          // Add reaction
+          reactionList.push({ wallet: currentWallet, username: state.username || "Guest" });
+        } else {
+          // Remove reaction (toggle)
+          reactionList.splice(existingIndex, 1);
+        }
+
+        // Cleanup empty emoji keys
+        if (reactionList.length === 0) {
+          delete msg.reactions[emoji];
         }
 
         history[msgIndex] = msg;
