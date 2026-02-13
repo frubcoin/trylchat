@@ -690,6 +690,93 @@ function createFallbackColorPicker() {
         });
     }
 
+    // ═══ APPEARANCE UI ═══
+    const btnAppearance = document.getElementById('btn-appearance');
+    const appearancePopover = document.getElementById('appearance-popover');
+    const scaleSlider = document.getElementById('scale-slider');
+    const btnScaleDown = document.getElementById('btn-scale-down');
+    const btnScaleUp = document.getElementById('btn-scale-up');
+    const btnScaleReset = document.getElementById('btn-scale-reset');
+    const scaleDisplay = document.getElementById('scale-value-display');
+
+    // ═══ UI SCALING ═══
+    function initUIScale() {
+        const savedScale = localStorage.getItem('ui_scale') || '1';
+        // Use 'zoom' property for global scaling as requested by typical "scale everything" behavior
+        // Note: 'zoom' is non-standard but effective for this. Transform:scale needs width compensation.
+        // If standard needed: document.body.style.transform = `scale(${savedScale})`;
+        // But let's try CSS variable first if implementation supports it, otherwise fallback.
+        // Actually, simply setting the property here to be picked up by CSS:
+        document.documentElement.style.setProperty('--ui-scale', savedScale);
+    }
+    initUIScale();
+
+    function updateScale(val) {
+        let scale = parseFloat(val);
+        scale = Math.max(0.5, Math.min(2.0, scale)); // Clamp
+
+        document.documentElement.style.setProperty('--ui-scale', scale);
+        localStorage.setItem('ui_scale', scale); // Persist!
+
+        if (scaleSlider) scaleSlider.value = scale;
+        if (scaleDisplay) scaleDisplay.textContent = Math.round(scale * 100) + '%';
+    }
+
+    if (btnAppearance && appearancePopover) {
+        // Toggle popover
+        btnAppearance.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = appearancePopover.classList.contains('hidden');
+
+            // Close others
+            document.getElementById('emoji-picker-container')?.classList.add('hidden');
+            document.getElementById('color-picker-popover')?.classList.add('hidden');
+            document.getElementById('command-popover')?.classList.add('hidden');
+
+            if (!isHidden) {
+                appearancePopover.classList.add('hidden');
+            } else {
+                appearancePopover.classList.remove('hidden');
+                // Sync slider with current value
+                const current = localStorage.getItem('ui_scale') || '1';
+                updateScale(current);
+            }
+        });
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!appearancePopover.contains(e.target) && e.target !== btnAppearance) {
+                appearancePopover.classList.add('hidden');
+            }
+        });
+
+        // Slider
+        if (scaleSlider) {
+            scaleSlider.addEventListener('input', (e) => {
+                updateScale(e.target.value);
+            });
+        }
+
+        // Buttons
+        if (btnScaleDown) {
+            btnScaleDown.addEventListener('click', () => {
+                let current = parseFloat(scaleSlider.value);
+                updateScale((current - 0.1).toFixed(1));
+            });
+        }
+        if (btnScaleUp) {
+            btnScaleUp.addEventListener('click', () => {
+                let current = parseFloat(scaleSlider.value);
+                updateScale((current + 0.1).toFixed(1));
+            });
+        }
+        if (btnScaleReset) {
+            btnScaleReset.addEventListener('click', () => {
+                updateScale(1.0);
+            });
+        }
+    }
+
     function loadWalletColor(wallet) {
         if (!wallet) return;
         try {
