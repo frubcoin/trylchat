@@ -1096,6 +1096,33 @@ function formatTime(ts) {
     return `${h}:${m} ${ampm}`;
 }
 
+function updateAIStatus(status, label) {
+    const aiStatus = document.getElementById('ai-status');
+    if (!aiStatus) return;
+
+    // Reset classes
+    aiStatus.className = '';
+
+    if (status === 'unavailable') {
+        aiStatus.classList.add('hidden');
+        aiStatus.textContent = '';
+    } else if (status === 'downloading') {
+        aiStatus.classList.remove('hidden');
+        aiStatus.classList.add('ai-status-downloading');
+        aiStatus.textContent = `Downloading ${label || 'Model'}...`;
+        aiStatus.title = 'Downloading AI Model';
+    } else if (status === 'ready') {
+        aiStatus.classList.remove('hidden');
+        aiStatus.classList.add('ai-status-ready');
+        aiStatus.textContent = 'AI Ready';
+
+        // Auto-hide after 3s
+        setTimeout(() => {
+            aiStatus.classList.add('hidden');
+        }, 3000);
+    }
+}
+
 async function getGoogleAiLanguageDetector() {
     if (!window.ai?.languageDetector?.capabilities || !window.ai?.languageDetector?.create) {
         updateAIStatus('unavailable');

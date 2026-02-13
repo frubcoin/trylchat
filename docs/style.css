@@ -1421,3 +1421,27 @@ body {
     visibility: visible;
     opacity: 1;
 }
+
+/* AI Status */
+#ai-status {
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.ai-status-downloading {
+  color: #FFA500;
+  background: rgba(255, 165, 0, 0.1);
+  animation: pulse 1.5s infinite;
+}
+
+.ai-status-ready {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+}
