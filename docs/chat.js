@@ -1303,33 +1303,67 @@ async function appendChatMessage(data, isHistory = false) {
     const div = document.createElement('div');
     div.className = 'chat-msg';
 
-    div.innerHTML = `
-    <div class="msg-header">
-      <span class="msg-username"></span>
-      <span class="msg-time">${formatTime(data.timestamp)}</span>
-    </div>
-    <div class="msg-text"></div>`;
+    // Compact Logic
+    let isCompact = false;
+    const lastMsg = DOM.chatMessages.lastElementChild;
+    if (lastMsg) {
+        const lastUser = lastMsg.getAttribute('data-username');
+        const lastTime = parseInt(lastMsg.getAttribute('data-timestamp') || '0');
+        const now = data.timestamp;
 
-    // Secure text insertion
-    const nameEl = div.querySelector('.msg-username');
-    nameEl.textContent = data.username;
-    nameEl.style.color = data.color;
+        // 5 minutes = 300,000 ms
+        if (lastUser === data.username && (now - lastTime) < 300000 && !data.isSystem && !data.replyTo) {
+            isCompact = true;
+            div.classList.add('compact');
+        }
+    }
 
-    if (data.isOwner) {
-        const badge = document.createElement('span');
-        badge.className = 'owner-badge';
-        badge.textContent = 'OWNER';
-        nameEl.after(badge);
-    } else if (data.isAdmin) {
-        const badge = document.createElement('span');
-        badge.className = 'admin-badge';
-        badge.textContent = 'ADMIN';
-        nameEl.after(badge);
-    } else if (data.isMod) {
-        const badge = document.createElement('span');
-        badge.className = 'mod-badge'; // We need to style this
-        badge.textContent = 'MOD';
-        nameEl.after(badge);
+    div.setAttribute('data-username', data.username);
+    div.setAttribute('data-timestamp', data.timestamp);
+
+    if (!isCompact) {
+        div.innerHTML = `
+        <div class="msg-header">
+          <span class="msg-username"></span>
+          <span class="msg-time">${formatTime(data.timestamp)}</span>
+        </div>
+        <div class="msg-text"></div>`;
+
+        // Secure text insertion for header
+        const nameEl = div.querySelector('.msg-username');
+        nameEl.textContent = data.username;
+        nameEl.style.color = data.color;
+
+        if (data.isOwner) {
+            const badge = document.createElement('span');
+            badge.className = 'owner-badge';
+            badge.textContent = 'OWNER';
+            nameEl.after(badge);
+        } else if (data.isAdmin) {
+            const badge = document.createElement('span');
+            badge.className = 'admin-badge';
+            badge.textContent = 'ADMIN';
+            nameEl.after(badge);
+        } else if (data.isMod) {
+            const badge = document.createElement('span');
+            badge.className = 'mod-badge';
+            badge.textContent = 'MOD';
+            nameEl.after(badge);
+        }
+    } else {
+        div.innerHTML = `<div class="msg-text"></div>`;
+    }
+
+    // Reply Context
+    if (data.replyTo) {
+        const replyDiv = document.createElement('div');
+        replyDiv.className = 'msg-reply-context';
+        replyDiv.textContent = `Replying to ${data.replyTo.username}: ${data.replyTo.text}`;
+        replyDiv.addEventListener('click', () => {
+            // Optional: Scroll to message if we had IDs
+            console.log('Clicked reply context');
+        });
+        div.appendChild(replyDiv);
     }
 
     const unescapedText = data.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
@@ -1353,6 +1387,11 @@ async function appendChatMessage(data, isHistory = false) {
             div.appendChild(wrap);
         }
     }
+
+    // Double click to reply
+    div.addEventListener('dblclick', () => {
+        initiateReply(data);
+    });
 
     DOM.chatMessages.appendChild(div);
 
