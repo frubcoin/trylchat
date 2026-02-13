@@ -375,7 +375,12 @@ export default class NekoChat implements Party.Server {
       // Send chat history to joining user
       const history =
         ((await this.room.storage.get("chatHistory")) as any[]) || [];
-      const recent = history.slice(-HISTORY_ON_JOIN);
+      const recent = history.slice(-HISTORY_ON_JOIN).map((msg: any) => {
+        // Strip wallet from history messages sent to client
+        const safeMsg = { ...msg };
+        delete safeMsg.wallet;
+        return safeMsg;
+      });
       sender.send(JSON.stringify({ type: "history", messages: recent }));
 
       // Broadcast join system message
@@ -834,7 +839,12 @@ export default class NekoChat implements Party.Server {
               this.room.broadcast(JSON.stringify({ type: "clear-chat" }));
               // Send history in a slightly delayed distinct message or same tick
               // "history" message expects { type: "history", messages: [...] }
-              this.room.broadcast(JSON.stringify({ type: "history", messages: history }));
+              const safeHistory = history.map((msg: any) => {
+                const safe = { ...msg };
+                delete safe.wallet;
+                return safe;
+              });
+              this.room.broadcast(JSON.stringify({ type: "history", messages: safeHistory }));
 
               sender.send(JSON.stringify({ type: "system-message", text: `🧼 Cleared last ${count} messages.` }));
               return;
@@ -852,7 +862,14 @@ export default class NekoChat implements Party.Server {
             if (history.length !== initialCount) {
               await this.room.storage.put("chatHistory", history);
               this.room.broadcast(JSON.stringify({ type: "clear-chat" }));
-              this.room.broadcast(JSON.stringify({ type: "history", messages: history }));
+
+              const safeHistory = history.map((msg: any) => {
+                const safe = { ...msg };
+                delete safe.wallet;
+                return safe;
+              });
+              this.room.broadcast(JSON.stringify({ type: "history", messages: safeHistory }));
+
               sender.send(JSON.stringify({ type: "system-message", text: `🧼 Cleared messages from ${targetWallet}.` }));
             } else {
               sender.send(JSON.stringify({ type: "system-message", text: `⚠️ No messages found from ${targetWallet} (or messages didn't have wallet attached).` }));
@@ -939,12 +956,18 @@ export default class NekoChat implements Party.Server {
         timestamp: Date.now(),
       };
 
-      // Broadcast to everyone
+      // Create separate object for broadcast (exclude wallet for privacy)
+      const broadcastData = {
+        ...msgData
+      };
+      delete (broadcastData as any).wallet;
+
+      // Broadcast to everyone (without wallet)
       this.room.broadcast(
-        JSON.stringify({ type: "chat-message", ...msgData })
+        JSON.stringify({ type: "chat-message", ...broadcastData })
       );
 
-      // Persist to history
+      // Persist to history (WITH wallet, for /clear <wallet> support)
       const history =
         ((await this.room.storage.get("chatHistory")) as any[]) || [];
       history.push(msgData);
