@@ -237,30 +237,7 @@ let currentDraft = '';
 // Reply state
 let replyContext = null; // { id, username, text }
 
-// Reaction state
-let reactionTargetId = null;
 
-function initiateReaction(msgId, btnElement) {
-    reactionTargetId = msgId;
-    console.log('[REACTION] Initiating for:', msgId);
-
-    // Open picker
-    const btnEmoji = document.getElementById('btn-emoji');
-    if (btnEmoji) btnEmoji.click();
-
-    // Optional: Position picker near button? 
-    // For now, standard picker location is fine, but we need to know we are in "reaction mode"
-}
-
-function sendReaction(msgId, emoji) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    console.log('[REACTION] Sending:', emoji, 'to', msgId);
-    ws.send(JSON.stringify({
-        type: 'reaction',
-        messageId: msgId,
-        emoji: emoji
-    }));
-}
 
 const COMMANDS = [
     '/whitelist',
@@ -1411,6 +1388,12 @@ async function appendChatMessage(data, isHistory = false) {
         div.innerHTML = `<div class="msg-text"></div>`;
     }
 
+    // Reactions Container (ensure it's always created so we can target it easily)
+    const reactionsContainer = document.createElement('div');
+    reactionsContainer.className = 'msg-reactions';
+    div.appendChild(reactionsContainer);
+
+
     // Reply Context
     // Reply Context
     if (data.replyTo) {
@@ -1440,7 +1423,7 @@ async function appendChatMessage(data, isHistory = false) {
     const reactBtn = document.createElement('button');
     reactBtn.className = 'msg-action-btn msg-action-react';
     reactBtn.title = "Add Reaction";
-    reactBtn.innerHTML = `<img src="Face Thinking.svg" alt="React" />`;
+    reactBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 20H10V22H9V23H5V22H4V16H5V15H6V18H8V17H10V16H12V15H14V17H13V18H11V20Z" fill="white"/><path d="M22 9V7H21V5H20V4H19V3H17V2H15V1H9V2H7V3H5V4H4V5H3V7H2V9H1V15H2V16H3V15H4V14H7V16H9V15H11V14H10V13H8V12H11V13H13V14H15V18H14V19H12V21H11V23H15V22H17V21H19V20H20V19H21V17H22V15H23V9H22ZM15 7H18V8H19V10H18V9H17V8H15V7ZM14 9H16V11H14V9ZM10 10H8V8H10V10ZM11 8V7H10V6H8V7H6V6H7V5H11V6H12V7H13V8H11Z" fill="white"/></svg>`;
     reactBtn.onclick = (e) => {
         e.stopPropagation();
         initiateReaction(data.id, reactBtn);
@@ -1451,38 +1434,21 @@ async function appendChatMessage(data, isHistory = false) {
     const replyBtn = document.createElement('button');
     replyBtn.className = 'msg-action-btn msg-action-reply';
     replyBtn.title = "Reply";
-    replyBtn.innerHTML = `<img src="Comments.svg" alt="Reply" />`;
+    replyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 16V17H4V18H1V14H2V12H1V7H2V5H4V4H6V3H11V4H13V5H15V7H16V12H15V14H13V15H11V16H5Z" fill="white"/><path d="M23 11V16H22V18H23V22H20V21H19V20H13V19H11V18H9V17H12V16H14V15H16V13H17V7H18V8H20V9H22V11H23Z" fill="white"/></svg>`;
     replyBtn.onclick = (e) => {
         e.stopPropagation();
         initiateReply({ id: data.id, username: data.username, text: data.text });
     };
     actionsDiv.appendChild(replyBtn);
 
+
     div.appendChild(actionsDiv);
 
-    // Render Reactions
+    // Initial Reaction Render
     if (data.reactions && Object.keys(data.reactions).length > 0) {
-        const reactionsBar = document.createElement('div');
-        reactionsBar.className = 'msg-reactions';
-
-        Object.entries(data.reactions).forEach(([emoji, users]) => {
-            if (!Array.isArray(users) || users.length === 0) return;
-
-            const pill = document.createElement('button');
-            pill.className = 'reaction-pill';
-            if (users.includes(currentUsername)) pill.classList.add('active');
-            pill.title = users.join(', ');
-            pill.innerHTML = `<span class="reaction-emoji">${emoji}</span> <span class="reaction-count">${users.length}</span>`;
-
-            pill.onclick = (e) => {
-                e.stopPropagation();
-                sendReaction(data.id, emoji);
-            };
-            reactionsBar.appendChild(pill);
-        });
-
-        div.appendChild(reactionsBar);
+        renderReactionsInto(reactionsContainer, data.id, data.reactions);
     }
+
 
     // Store ID for updates
     if (data.id) div.id = `msg-${data.id}`;
@@ -1593,14 +1559,15 @@ function updateMessageReactions(msgId, reactions) {
     const msgDiv = document.getElementById(`msg-${msgId}`);
     if (!msgDiv) return;
 
-    // Remove existing reactions bar
-    const existing = msgDiv.querySelector('.msg-reactions');
-    if (existing) existing.remove();
+    const container = msgDiv.querySelector('.msg-reactions');
+    if (container) {
+        renderReactionsInto(container, msgId, reactions);
+    }
+}
 
+function renderReactionsInto(container, msgId, reactions) {
+    container.innerHTML = '';
     if (!reactions || Object.keys(reactions).length === 0) return;
-
-    const reactionsBar = document.createElement('div');
-    reactionsBar.className = 'msg-reactions';
 
     Object.entries(reactions).forEach(([emoji, users]) => {
         if (!Array.isArray(users) || users.length === 0) return;
@@ -1615,11 +1582,10 @@ function updateMessageReactions(msgId, reactions) {
             e.stopPropagation();
             sendReaction(msgId, emoji);
         };
-        reactionsBar.appendChild(pill);
+        container.appendChild(pill);
     });
-
-    msgDiv.appendChild(reactionsBar);
 }
+
 
 function updateUserList(users, total) {
     DOM.userList.innerHTML = '';

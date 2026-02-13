@@ -1665,7 +1665,7 @@ body {
 }
 
 /* Fix SVG alignment */
-/* ═══ REACTIONS ═══ */
+/* ═══ MESSAGE ACTIONS (Hover Buttons) ═══ */
 .msg-actions {
   position: absolute;
   right: 0;
@@ -1704,6 +1704,7 @@ body {
   width: 16px;
   height: 16px;
   opacity: 0.7;
+  display: block;
   transition: opacity 0.2s;
 }
 
@@ -1714,46 +1715,51 @@ body {
 
 
 
+
 /* ═══ REACTIONS ═══ */
 .msg-reactions {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 4px;
+  min-height: 20px;
+  /* Ensure space for empty container if needed */
 }
 
 .reaction-pill {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 2px 6px;
+  border-radius: 8px;
+  padding: 2px 8px;
   display: flex;
   align-items: center;
   gap: 4px;
   cursor: pointer;
   font-size: 11px;
   transition: all 0.2s;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .reaction-pill:hover {
   background: var(--bg-hover);
-  border-color: var(--text-secondary);
+  border-color: var(--text-muted);
 }
 
 .reaction-pill.active {
   background: rgba(var(--accent-rgb), 0.1);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--text);
 }
 
 .reaction-emoji {
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .reaction-count {
   font-weight: 600;
 }
+
 
 .reaction-picker-popover {
 
@@ -1777,58 +1783,7 @@ body {
 }
 
 
-.msg-action-btn img {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
 
-.msg-action-btn svg {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
-
-.msg-reactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.reaction-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 2px 8px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.reaction-pill:hover {
-  border-color: var(--text-muted);
-  background: var(--bg-hover);
-}
-
-.reaction-pill.active {
-  background: rgba(var(--accent-rgb), 0.1);
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-.reaction-emoji {
-  font-size: 13px;
-  line-height: 1;
-}
-
-.reaction-count {
-  font-weight: 600;
-}
 
 
 .scroll-btn.hidden {
