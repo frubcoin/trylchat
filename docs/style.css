@@ -2248,3 +2248,88 @@ input[type=range].scale-slider {
   }
 }
 
+/* Final mobile layout authority: sticky header + center chat + swipe sidebars. */
+@media (max-width: 768px) {
+  #chat-page {
+    position: fixed;
+    inset: 0;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  #site-header {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    z-index: 1200;
+  }
+
+  #main-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    padding-top: 0 !important;
+    margin-top: 60px;
+    height: calc(100dvh - 60px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #chat-area {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    zoom: 1 !important;
+    overflow: hidden;
+  }
+
+  #chat-messages {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+
+  #rooms-sidebar,
+  #sidebar {
+    position: fixed !important;
+    top: 60px;
+    bottom: 0;
+    width: min(82vw, 320px);
+    z-index: 1300;
+    display: flex !important;
+    background: var(--bg-elevated);
+    overflow-y: auto;
+    transition: transform 0.25s ease;
+  }
+
+  #rooms-sidebar {
+    left: 0;
+    transform: translateX(-105%) !important;
+  }
+
+  #sidebar {
+    right: 0;
+    transform: translateX(105%) !important;
+  }
+
+  body.mobile-menu-active #rooms-sidebar {
+    transform: translateX(0) !important;
+  }
+
+  body.mobile-users-active #sidebar {
+    transform: translateX(0) !important;
+  }
+
+  #sidebar-backdrop {
+    top: 60px !important;
+    bottom: 0;
+    height: auto !important;
+    z-index: 1250;
+  }
+}
+
