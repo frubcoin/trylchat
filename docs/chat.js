@@ -1463,7 +1463,7 @@ async function appendChatMessage(data, isHistory = false) {
     replyBtn.title = "Reply";
     replyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 5H12V10H16V12H12V17H10V12H6V10H10V5Z" fill="white"/></svg>`; // Plus icon for reply? Or maybe arrow
     // Actually let's use a proper reply arrow
-    replyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.99994 19V14H18.9999V8H9.99994V3L1.99994 11L9.99994 19Z" fill="white"/></svg>`;
+    replyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 16V17H4V18H1V14H2V12H1V7H2V5H4V4H6V3H11V4H13V5H15V7H16V12H15V14H13V15H11V16H5Z" fill="white"/><path d="M23 11V16H22V18H23V22H20V21H19V20H13V19H11V18H9V17H12V16H14V15H16V13H17V7H18V8H20V9H22V11H23Z" fill="white"/></svg>`;
 
     replyBtn.onclick = (e) => {
         e.stopPropagation();
@@ -1543,10 +1543,40 @@ function initiateReaction(msgId, anchorBtn) {
     popover.className = 'reaction-picker-popover';
 
     // Position it relative to the button
+    // Position it relative to the button
     const rect = anchorBtn.getBoundingClientRect();
+    const pickerHeight = 435; // Approximate height of EmojiMart
+    const spaceBelow = window.innerHeight - rect.bottom;
+
     popover.style.position = 'fixed';
-    popover.style.top = (rect.bottom + 5) + 'px';
-    popover.style.right = (window.innerWidth - rect.right) + 'px';
+
+    // Check if we should render above or below
+    if (spaceBelow < pickerHeight && rect.top > pickerHeight) {
+        // Render above
+        popover.style.bottom = (window.innerHeight - rect.top + 5) + 'px';
+        popover.style.top = 'auto';
+    } else {
+        // Render below
+        popover.style.top = (rect.bottom + 5) + 'px';
+        popover.style.bottom = 'auto';
+    }
+
+    // Align right edge with button right edge, but ensure it doesn't go off screen left
+    // EmojiMart width is ~352px
+    const pickerWidth = 352;
+    // blockedRight is distance from right edge
+    const rightPos = window.innerWidth - rect.right;
+
+    // If placing it right-aligned pushes it off-screen left (screen too narrow?), clamp it
+    // But usually right alignment is safe on mobile unless button is way left.
+    // Let's stick to right alignment for now but add a max-width if needed.
+    popover.style.right = rightPos + 'px';
+
+    // Safety check for mobile: if rightPos causes left overflow
+    if (window.innerWidth - rightPos < pickerWidth) {
+        popover.style.right = '10px'; // Force it to fit on screen
+    }
+
     popover.style.zIndex = '10000';
 
     const pickerOptions = {
