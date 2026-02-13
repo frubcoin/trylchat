@@ -1072,9 +1072,10 @@ function getEmbedUrl(urlString) {
 
 function updateTypingIndicator(users) {
     if (!DOM.typingIndicator) return;
-    console.log('[TYPING] Updating indicator for users:', users);
+    console.log('[TYPING] Received users:', users);
 
     const activeUsers = users.filter((u) => u && u !== currentUsername);
+    console.log('[TYPING] Active (others):', activeUsers);
     const count = activeUsers.length;
 
     if (count === 0) {

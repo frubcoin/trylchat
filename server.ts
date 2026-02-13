@@ -123,7 +123,7 @@ export default class NekoChat implements Party.Server {
         typingUsers.push(state.username);
       }
     }
-    // console.log("[TYPING] Broadcasting users:", typingUsers);
+    console.log("[TYPING] Broadcasting users:", typingUsers);
     this.room.broadcast(JSON.stringify({ type: "typing-users", users: typingUsers }));
   }
 
