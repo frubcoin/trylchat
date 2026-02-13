@@ -1573,13 +1573,44 @@ if (!isHistory && unescapedText && userLanguage) {
         scrollToBottom();
     }
 }
-}
 
 function appendSystemMessage(data) {
     const div = document.createElement('div');
     div.className = 'system-msg';
     div.textContent = data.text;
     DOM.chatMessages.appendChild(div);
+}
+
+function updateMessageReactions(msgId, reactions) {
+    const msgDiv = document.getElementById(`msg-${msgId}`);
+    if (!msgDiv) return;
+
+    // Remove existing reactions bar
+    const existing = msgDiv.querySelector('.msg-reactions');
+    if (existing) existing.remove();
+
+    if (!reactions || Object.keys(reactions).length === 0) return;
+
+    const reactionsBar = document.createElement('div');
+    reactionsBar.className = 'msg-reactions';
+
+    Object.entries(reactions).forEach(([emoji, users]) => {
+        if (!Array.isArray(users) || users.length === 0) return;
+
+        const pill = document.createElement('button');
+        pill.className = 'reaction-pill';
+        if (users.includes(currentUsername)) pill.classList.add('active');
+        pill.title = users.join(', ');
+        pill.innerHTML = `<span class="reaction-emoji">${emoji}</span> <span class="reaction-count">${users.length}</span>`;
+
+        pill.onclick = (e) => {
+            e.stopPropagation();
+            sendReaction(msgId, emoji);
+        };
+        reactionsBar.appendChild(pill);
+    });
+
+    msgDiv.appendChild(reactionsBar);
 }
 
 function updateUserList(users, total) {
