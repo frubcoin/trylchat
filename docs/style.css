@@ -430,7 +430,7 @@ body {
 .wordmark-icon {
   height: 0.7em;
   width: auto;
-  fill: currentColor;
+  fill: #f9fafb;
 }
 
 .header-right {
