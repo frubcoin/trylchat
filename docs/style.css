@@ -512,6 +512,20 @@ body {
   }
 }
 
+@keyframes highlight-msg {
+  0% {
+    background: rgba(var(--accent-rgb), 0.2);
+  }
+
+  100% {
+    background: transparent;
+  }
+}
+
+.highlight {
+  animation: highlight-msg 2s ease-out;
+}
+
 /* ═══ MAIN LAYOUT ═══ */
 /* #chat-page is defined above with fixed positioning and 100dvh */
 

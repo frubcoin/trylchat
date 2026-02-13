@@ -1429,8 +1429,9 @@ async function appendChatMessage(data, isHistory = false) {
         replyDiv.innerHTML = `<span class="reply-to-user" style="color: ${nameColor}">@${data.replyTo.username}</span> ${data.replyTo.text}`;
 
         replyDiv.addEventListener('click', () => {
-            // Optional: Scroll to message if we had IDs
-            console.log('Clicked reply context');
+            if (data.replyTo && data.replyTo.id) {
+                scrollToMessage(data.replyTo.id);
+            }
         });
 
         // Insert before text, but after header (if exists)
@@ -2068,3 +2069,15 @@ if (btnScrollBottom) {
 
 // Start connection after DOM and listeners are ready
 connectWebSocket('main-lobby');
+
+function scrollToMessage(msgId) {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlight');
+        setTimeout(() => el.classList.remove('highlight'), 2000);
+    } else {
+        // Simple toast or feedback if message not found (e.g. too old)
+        console.log('Message not found (might be too old or not loaded)');
+    }
+}
