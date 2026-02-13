@@ -303,15 +303,18 @@ export default class NekoChat implements Party.Server {
       const url = new URL(proxyUrl);
       url.searchParams.set("wallet", wallet);
       const proxySecret = ((this.room.env.TOKEN_CHECK_PROXY_SECRET as string) || "").trim();
+      const hasSecret = proxySecret.length > 0;
       const response = await fetch(url.toString(), {
         method: "GET",
         headers: proxySecret ? { "x-relay-secret": proxySecret } : {}
       });
       if (!response.ok) {
+        console.warn(`[PROXY] ${this.proxyLabel(proxyUrl)} status=${response.status} hasSecret=${hasSecret}`);
         return { ok: false, detail: `Relay ${this.proxyLabel(proxyUrl)} returned HTTP ${response.status}` };
       }
 
       const data: any = await response.json();
+      console.log(`[PROXY] ${this.proxyLabel(proxyUrl)} status=200 hasSecret=${hasSecret} ok=${!!data?.ok}`);
       if (typeof data?.ok === "boolean") {
         return { ok: data.ok, detail: String(data?.detail || "Relay response") };
       }
