@@ -1072,7 +1072,23 @@ export default class NekoChat implements Party.Server {
             break;
           }
         }
-        // 2. Fallback? (Optional, maybe later)
+
+        // 2. Use existing color if valid
+        if (!targetColor && msgData.replyTo.color) {
+          targetColor = msgData.replyTo.color;
+        }
+
+        // 3. Fallback to consistent hash -> color
+        if (!targetColor) {
+          // Simple hash function for consistent colors for offline users
+          let hash = 0;
+          for (let i = 0; i < msgData.replyTo.username.length; i++) {
+            hash = msgData.replyTo.username.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+          targetColor = "#" + "00000".substring(0, 6 - c.length) + c;
+        }
+
         if (targetColor) {
           msgData.replyTo.color = targetColor;
         }
