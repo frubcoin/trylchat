@@ -1793,6 +1793,8 @@ body {
   /* For handle positioning */
   transition: width 0.0s;
   /* Disable transition during drag */
+  overflow-x: hidden;
+  /* Prevent scrollbars from handles */
 }
 
 .resize-handle {
@@ -2033,11 +2035,6 @@ body.resizing .resize-handle {
   font-family: var(--font-body);
   display: flex;
   flex-direction: column;
-}
-
-font-family: var(--font-body);
-display: flex;
-flex-direction: column;
 }
 
 .command-header {
