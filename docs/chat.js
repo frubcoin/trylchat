@@ -668,19 +668,6 @@ function initCustomUI() {
     // Commands
     const btnCommands = document.getElementById('btn-commands');
     if (btnCommands) {
-        // Create popover in body if not exists, or move existing one
-        let popover = document.getElementById('command-popover');
-        if (popover && popover.parentNode !== document.body) {
-            popover.parentNode.removeChild(popover);
-            document.body.appendChild(popover);
-            console.log('[UI] Moved existing command-popover to body');
-        } else if (!popover) {
-            popover = document.createElement('div');
-            popover.id = 'command-popover';
-            popover.className = 'hidden';
-            document.body.appendChild(popover);
-            console.log('[UI] Created new command-popover in body');
-        }
 
         btnCommands.addEventListener('click', (e) => {
             console.log('[UI] Command button clicked');
