@@ -1796,16 +1796,21 @@ body {
   /* Disable transition during drag */
   overflow-x: hidden;
   /* Prevent scrollbars from handles */
+  touch-action: none;
+  /* Required for interact.js dragging */
 }
 
 .resize-handle {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 6px;
+  width: 10px;
+  /* Increased from 6px for easier grabbing */
   cursor: col-resize;
-  z-index: 101;
+  z-index: 1000;
+  /* High z-index */
   transition: background 0.2s;
+  touch-action: none;
 }
 
 #resizer-left {
