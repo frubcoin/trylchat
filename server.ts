@@ -257,6 +257,25 @@ export default class NekoChat implements Party.Server {
     this.tokenCache = new Map();
   }
 
+  private getTokenCheckEndpoints(): string[] {
+    const fromEnv = ((this.room.env.SOLANA_RPC_URLS as string) || "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const heliusApiKey = (this.room.env.HELIUS_API_KEY as string) || "";
+    const helius = heliusApiKey
+      ? [`https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`]
+      : [];
+
+    const defaults = [
+      "https://api.mainnet-beta.solana.com",
+      "https://solana.public-rpc.com"
+    ];
+
+    return Array.from(new Set([...fromEnv, ...helius, ...defaults]));
+  }
+
   private async verifyTokenHolder(wallet: string): Promise<{ ok: boolean; detail: string }> {
     // 1. Check Cache
     const cached = this.tokenCache.get(wallet);
@@ -266,11 +285,8 @@ export default class NekoChat implements Party.Server {
     }
 
     // Try multiple RPC endpoints — Helius returns 401 from CF Workers
-    const heliusApiKey = (this.room.env.HELIUS_API_KEY as string) || "";
-    const endpoints = [
-      ...(heliusApiKey ? [`https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`] : []),
-      "https://api.mainnet-beta.solana.com"
-    ];
+    const endpoints = this.getTokenCheckEndpoints();
+    const rpcErrors: string[] = [];
 
     const body = JSON.stringify({
       jsonrpc: "2.0",
@@ -285,19 +301,22 @@ export default class NekoChat implements Party.Server {
 
     for (const rpc of endpoints) {
       try {
-        // console.log(`[TOKEN CHECK] Trying ${rpc.substring(0, 50)}... Wallet: ${wallet}`);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort("timeout"), 8000);
         const response = await fetch(rpc, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body
+          body,
+          signal: controller.signal
         });
+        clearTimeout(timeout);
         if (!response.ok) {
-          // console.warn(`[TOKEN CHECK] ${rpc.substring(0, 50)} returned HTTP ${response.status}`);
+          rpcErrors.push(`${rpc}: HTTP ${response.status}`);
           continue; // Try next endpoint
         }
         const data: any = await response.json();
         if (data.error) {
-          // console.warn(`[TOKEN CHECK] RPC error from ${rpc.substring(0, 50)}:`, data.error);
+          rpcErrors.push(`${rpc}: RPC ${JSON.stringify(data.error)}`);
           continue;
         }
         // console.log(`[TOKEN CHECK] Response:`, JSON.stringify(data).substring(0, 300));
@@ -315,11 +334,14 @@ export default class NekoChat implements Party.Server {
         this.tokenCache.set(wallet, { ok: false, timestamp: Date.now() });
         return { ok: false, detail: `No token accounts found for mint ${TOKEN_MINT}` };
       } catch (err: any) {
-        console.warn(`[TOKEN CHECK] Exception from ${rpc.substring(0, 50)}:`, err?.message);
+        rpcErrors.push(`${rpc}: ${err?.message || "request failed"}`);
         continue;
       }
     }
-    return { ok: false, detail: "All RPC endpoints failed" };
+    const detail = rpcErrors.length
+      ? `All RPC endpoints failed (${rpcErrors.slice(0, 3).join(" | ")})`
+      : "All RPC endpoints failed";
+    return { ok: false, detail };
   }
   // Track message timestamps for rate limiting
   rateLimits = new Map<string, number[]>();
@@ -1538,3 +1560,4 @@ export default class NekoChat implements Party.Server {
 }
 
 NekoChat satisfies Party.Worker;
+
