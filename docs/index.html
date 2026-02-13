@@ -93,6 +93,23 @@
             <!-- populated by JS -->
           </ul>
         </div>
+        <!-- Sidebar Footer for Scroll Controls -->
+        <div class="sidebar-footer">
+          <button id="btn-scroll-top" class="scroll-btn hidden" title="Scroll to Top">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M11 1H13V2H14V3H15V4H16V5H17V6H18V7H19V8H20V9H21V10H22V11H23V12H22V13H21V14H20V13H19V12H18V11H17V10H16V9H15V8H14V23H10V8H9V9H8V10H7V11H6V12H5V13H4V14H3V13H2V12H1V11H2V10H3V9H4V8H5V7H6V6H7V5H8V4H9V3H10V2H11V1Z"
+                fill="currentColor" />
+            </svg>
+          </button>
+          <button id="btn-scroll-bottom" class="scroll-btn hidden" title="Scroll to Bottom">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M13 23H11V22H10V21H9V20H8V19H7V18H6V17H5V16H4V15H3V14H2V13H1V12H2V11H3V10H4V11H5V12H6V13H7V14H8V15H9V16H10V1H14V16H15V15H16V14H17V13H18V12H19V11H20V10H21V11H22V12H23V13H22V14H21V15H20V16H19V17H18V18H17V19H16V20H15V21H14V22H13V23Z"
+                fill="currentColor" />
+            </svg>
+          </button>
+        </div>
       </aside>
 
       <!-- CHAT AREA -->
@@ -105,9 +122,7 @@
         <div id="chat-messages">
           <!-- messages appear here -->
         </div>
-        <!-- Scroll Controls -->
-        <button id="btn-scroll-top" class="scroll-btn hidden" title="Scroll to Top">⬆</button>
-        <button id="btn-scroll-bottom" class="scroll-btn hidden" title="Scroll to Bottom">⬇</button>
+
         <form id="chat-form">
           <div id="typing-indicator" class="hidden"></div>
           <div id="reply-bar" class="hidden">

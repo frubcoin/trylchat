@@ -1598,3 +1598,59 @@ body {
   color: #4ade80;
   background: rgba(74, 222, 128, 0.1);
 }
+
+/* ═══ SCROLL BUTTONS (SIDEBAR) ═══ */
+/* Ensure sidebar has flex column and relative positioning */
+#rooms-sidebar {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Push footer to bottom */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.scroll-btn {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.scroll-btn:hover {
+  background: var(--bg-surface);
+  color: var(--text);
+  border-color: var(--text-secondary);
+}
+
+.scroll-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  /* Fix separate line height */
+}
+
+/* Fix SVG alignment */
+.scroll-btn svg path {
+  fill: currentColor;
+}
+
+.scroll-btn.hidden {
+  opacity: 0.3;
+  pointer-events: none;
+  filter: grayscale(1);
+}
