@@ -1469,29 +1469,55 @@ body {
 
 
 /* ═══ REPLY BAR ═══ */
-#reply-bar {
+/* ═══ REPLY BAR ═══ */
+#chat-input-area {
+  position: relative;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 8px 16px;
+  transition: all 0.2s;
+  z-index: 20;
+}
+
+#reply-bar {
+  position: absolute;
+  bottom: 100%;
+  /* Sits directly on top of input */
+  left: 0;
+  right: 0;
   background: var(--bg-surface);
   padding: 8px 16px;
   border-radius: 24px 24px 0 0;
-  /* Match input radius */
   border: 1px solid var(--border);
   border-bottom: none;
+  /* Merge */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 13px;
   color: var(--text-muted);
-  width: 100%;
+  z-index: 10;
   margin-bottom: -1px;
   /* Overlap border */
-  z-index: 10;
-  position: relative;
 }
 
 #reply-bar.hidden {
   display: none;
 }
 
+/* When reply is visible, flatten top input corners */
+#chat-input-area:has(#reply-bar:not(.hidden)) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top-color: transparent;
+  /* Seamless merge */
+}
+
+/* Re-adding Reply Content Styles */
 .reply-content {
   display: flex;
   flex-direction: column;
@@ -1530,22 +1556,6 @@ body {
   color: var(--accent);
 }
 
-/* Update Input Area to connect with reply bar */
-#chat-input-area {
-  border-radius: 24px;
-  /* Default */
-  transition: border-radius 0.2s;
-}
-
-/* When reply bar is visible, flatten top corners of input */
-/* We need a class on the input area or just rely on the visual stack */
-/* Since reply bar is inside the form but outside input-area, we can style sibling */
-#reply-bar:not(.hidden)+#chat-input-area {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  border-top: none;
-  /* Merge borders */
-}
 
 /* ═══ COMPACT MESSAGES ═══ */
 .chat-msg.compact {

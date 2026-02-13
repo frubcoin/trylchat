@@ -125,22 +125,26 @@
 
         <form id="chat-form">
           <div id="typing-indicator" class="hidden"></div>
-          <div id="reply-bar" class="hidden">
-            <div class="reply-content">
-              <span class="reply-to">Replying to <b id="reply-to-user"></b></span>
-              <span id="reply-text-preview"></span>
-            </div>
-            <button id="btn-cancel-reply" type="button">✕</button>
-          </div>
+
           <div id="chat-input-area">
+            <!-- Reply Bar (Absolute/Overlay) -->
+            <div id="reply-bar" class="hidden">
+              <div class="reply-content">
+                <span class="reply-to">Replying to <b id="reply-to-user"></b></span>
+                <span id="reply-text-preview"></span>
+              </div>
+              <button id="btn-cancel-reply" type="button">✕</button>
+            </div>
+
             <div id="emoji-wrapper">
               <button type="button" id="btn-color" class="color-btn" title="Change name color"></button>
               <div id="color-picker-popover" class="hidden"></div>
               <button type="button" id="btn-emoji" class="icon-btn">😊</button>
               <div id="emoji-picker-container" class="hidden"></div>
-
             </div>
+
             <input type="text" id="chat-input" placeholder="Say something..." autocomplete="off">
+
             <button type="submit" class="btn-send" title="Send">
               <svg width="38" height="38" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
