@@ -104,82 +104,80 @@
         </div>
         <div id="chat-messages">
           <!-- messages appear here -->
-          <div id="chat-messages">
-            <!-- messages appear here -->
-          </div>
-          <!-- Scroll Controls -->
-          <button id="btn-scroll-top" class="scroll-btn hidden" title="Scroll to Top">⬆</button>
-          <button id="btn-scroll-bottom" class="scroll-btn hidden" title="Scroll to Bottom">⬇</button>
-          <form id="chat-form">
-            <div id="typing-indicator" class="hidden"></div>
-            <div id="reply-bar" class="hidden">
-              <div class="reply-content">
-                <span class="reply-to">Replying to <b id="reply-to-user"></b></span>
-                <span id="reply-text-preview"></span>
-              </div>
-              <button id="btn-cancel-reply" type="button">✕</button>
-            </div>
-            <div id="chat-input-area">
-              <div id="emoji-wrapper">
-                <button type="button" id="btn-color" class="color-btn" title="Change name color"></button>
-                <div id="color-picker-popover" class="hidden"></div>
-                <button type="button" id="btn-emoji" class="icon-btn">😊</button>
-                <div id="emoji-picker-container" class="hidden"></div>
-
-              </div>
-              <input type="text" id="chat-input" placeholder="Say something..." autocomplete="off">
-              <button type="submit" class="btn-send" title="Send">
-                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M22 9V7H21V5H20V4H19V3H17V2H15V1H9V2H7V3H5V4H4V5H3V7H2V9H1V15H2V17H3V19H4V20H5V21H7V22H9V23H15V22H17V21H19V20H20V19H21V17H22V15H23V9H22ZM16 14H15V15H14V16H13V17H12V13H6V11H12V7H13V8H14V9H15V10H16V11H17V13H16V14Z"
-                    fill="#e9e9e9" />
-                </svg>
-              </button>
-            </div>
-          </form>
         </div>
-
-        <!-- SIDEBAR (RIGHT) -->
-        <aside id="sidebar">
-          <div class="sidebar-section">
-            <h3 class="sidebar-title">People</h3>
-            <ul id="user-list">
-              <li class="no-users">no one here yet</li>
-            </ul>
-          </div>
-          <div class="sidebar-section">
-            <h3 class="sidebar-title">Visitors</h3>
-            <div id="hit-counter">
-              <span id="counter-value">0</span>
+        <!-- Scroll Controls -->
+        <button id="btn-scroll-top" class="scroll-btn hidden" title="Scroll to Top">⬆</button>
+        <button id="btn-scroll-bottom" class="scroll-btn hidden" title="Scroll to Bottom">⬇</button>
+        <form id="chat-form">
+          <div id="typing-indicator" class="hidden"></div>
+          <div id="reply-bar" class="hidden">
+            <div class="reply-content">
+              <span class="reply-to">Replying to <b id="reply-to-user"></b></span>
+              <span id="reply-text-preview"></span>
             </div>
+            <button id="btn-cancel-reply" type="button">✕</button>
           </div>
-          <!-- Admin Panel (Hidden by default) -->
-          <div id="admin-panel" class="hidden">
-            <select id="round-select">
-              <option value="1">1 round</option>
-              <option value="3" selected>Best of 3</option>
-              <option value="5">Best of 5</option>
-              <option value="7">Best of 7</option>
-            </select>
-            <button id="btn-admin-game">⚡ Start</button>
-          </div>
-          <!-- AI Status -->
-          <div id="ai-status" class="hidden"></div>
-        </aside>
+          <div id="chat-input-area">
+            <div id="emoji-wrapper">
+              <button type="button" id="btn-color" class="color-btn" title="Change name color"></button>
+              <div id="color-picker-popover" class="hidden"></div>
+              <button type="button" id="btn-emoji" class="icon-btn">😊</button>
+              <div id="emoji-picker-container" class="hidden"></div>
 
+            </div>
+            <input type="text" id="chat-input" placeholder="Say something..." autocomplete="off">
+            <button type="submit" class="btn-send" title="Send">
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M22 9V7H21V5H20V4H19V3H17V2H15V1H9V2H7V3H5V4H4V5H3V7H2V9H1V15H2V17H3V19H4V20H5V21H7V22H9V23H15V22H17V21H19V20H20V19H21V17H22V15H23V9H22ZM16 14H15V15H14V16H13V17H12V13H6V11H12V7H13V8H14V9H15V10H16V11H17V13H16V14Z"
+                  fill="#e9e9e9" />
+              </svg>
+            </button>
+          </div>
+        </form>
       </div>
 
+      <!-- SIDEBAR (RIGHT) -->
+      <aside id="sidebar">
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">People</h3>
+          <ul id="user-list">
+            <li class="no-users">no one here yet</li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">Visitors</h3>
+          <div id="hit-counter">
+            <span id="counter-value">0</span>
+          </div>
+        </div>
+        <!-- Admin Panel (Hidden by default) -->
+        <div id="admin-panel" class="hidden">
+          <select id="round-select">
+            <option value="1">1 round</option>
+            <option value="3" selected>Best of 3</option>
+            <option value="5">Best of 5</option>
+            <option value="7">Best of 7</option>
+          </select>
+          <button id="btn-admin-game">⚡ Start</button>
+        </div>
+        <!-- AI Status -->
+        <div id="ai-status" class="hidden"></div>
+      </aside>
+
     </div>
 
-    <!-- ═══ REACTION GAME OVERLAY ═══ -->
-    <div id="game-overlay" class="hidden">
-      <div id="game-message">WAIT FOR IT...</div>
-    </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5.5.2/dist/iro.min.js"></script>
-    <div id="sidebar-backdrop" class="hidden"></div>
-    <script src="chat.js?v=4"></script>
+  <!-- ═══ REACTION GAME OVERLAY ═══ -->
+  <div id="game-overlay" class="hidden">
+    <div id="game-message">WAIT FOR IT...</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5.5.2/dist/iro.min.js"></script>
+  <div id="sidebar-backdrop" class="hidden"></div>
+  <script src="chat.js?v=4"></script>
 </body>
 
 </html>
