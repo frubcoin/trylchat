@@ -1404,6 +1404,7 @@ async function appendChatMessage(data, isHistory = false) {
         <div class="msg-text"></div>`;
 
         // Secure text insertion for header
+        const nameEl = div.querySelector('.msg-username');
         nameEl.textContent = data.username;
         nameEl.style.color = data.color;
 
