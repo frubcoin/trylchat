@@ -1,0 +1,16 @@
+/* Typing Indicator */
+#typing-indicator {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 4px;
+    height: 18px;
+    /* reserve space */
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#typing-indicator.hidden {
+    display: none;
+}

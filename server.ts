@@ -1061,6 +1061,23 @@ export default class NekoChat implements Party.Server {
         timestamp: Date.now(),
       };
 
+      // Inject color for replyTo user if present
+      if (msgData.replyTo && msgData.replyTo.username) {
+        // 1. Check active users
+        let targetColor = null;
+        for (const conn of this.room.getConnections()) {
+          const s = conn.state as any;
+          if (s && s.username === msgData.replyTo.username) {
+            targetColor = s.color;
+            break;
+          }
+        }
+        // 2. Fallback? (Optional, maybe later)
+        if (targetColor) {
+          msgData.replyTo.color = targetColor;
+        }
+      }
+
       // Create separate object for broadcast (exclude wallet for privacy)
       // Use last 6 chars of wallet as a grouping ID (sufficient collision resistance for this context)
       const senderId = wallet ? wallet.slice(-8) : "anon";

@@ -1425,7 +1425,8 @@ async function appendChatMessage(data, isHistory = false) {
     if (data.replyTo) {
         const replyDiv = document.createElement('div');
         replyDiv.className = 'msg-reply-context';
-        replyDiv.innerHTML = `<span class="reply-to-user">@${data.replyTo.username}</span> ${data.replyTo.text}`;
+        const nameColor = data.replyTo.color || 'var(--text-muted)';
+        replyDiv.innerHTML = `<span class="reply-to-user" style="color: ${nameColor}">@${data.replyTo.username}</span> ${data.replyTo.text}`;
 
         replyDiv.addEventListener('click', () => {
             // Optional: Scroll to message if we had IDs
@@ -1460,10 +1461,13 @@ async function appendChatMessage(data, isHistory = false) {
     const replyBtn = document.createElement('button');
     replyBtn.className = 'msg-action-btn msg-action-reply';
     replyBtn.title = "Reply";
-    replyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 16V17H4V18H1V14H2V12H1V7H2V5H4V4H6V3H11V4H13V5H15V7H16V12H15V14H13V15H11V16H5Z" fill="white"/><path d="M23 11V16H22V18H23V22H20V21H19V20H13V19H11V18H9V17H12V16H14V15H16V13H17V7H18V8H20V9H22V11H23Z" fill="white"/></svg>`;
+    replyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 5H12V10H16V12H12V17H10V12H6V10H10V5Z" fill="white"/></svg>`; // Plus icon for reply? Or maybe arrow
+    // Actually let's use a proper reply arrow
+    replyBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.99994 19V14H18.9999V8H9.99994V3L1.99994 11L9.99994 19Z" fill="white"/></svg>`;
+
     replyBtn.onclick = (e) => {
         e.stopPropagation();
-        initiateReply({ id: data.id, username: data.username, text: data.text });
+        initiateReply(data.id, data.text, data.username, data.color);
     };
     actionsDiv.appendChild(replyBtn);
 
@@ -1959,28 +1963,25 @@ const replyToUser = document.getElementById('reply-to-user');
 const replyPreview = document.getElementById('reply-text-preview');
 const btnCancelReply = document.getElementById('btn-cancel-reply');
 
-if (btnCancelReply) {
-    btnCancelReply.addEventListener('click', cancelReply);
+function initiateReply(msgId, text, username, color) {
+    console.log('Replying to:', msgId);
+    replyContext = { id: msgId, text: text, username: username, color: color };
+
+    const replyBar = document.getElementById('reply-bar');
+    const replyUser = document.getElementById('reply-to-user');
+    const replyPreview = document.getElementById('reply-text-preview');
+
+    if (replyBar && replyUser && replyPreview) {
+        replyUser.textContent = username;
+        if (color) replyUser.style.color = color;
+        replyPreview.textContent = text;
+        replyBar.classList.remove('hidden');
+        DOM.chatInput.focus();
+    }
 }
 
-function initiateReply(msgData) {
-    if (!msgData || !replyBar) return;
-
-    // Don't quote if already quoting
-    // or quoting a quote? 
-    // Just simple for now: quote the message data we have.
-
-    replyContext = {
-        username: msgData.username,
-        text: msgData.text,
-        timestamp: msgData.timestamp
-    };
-
-    replyToUser.textContent = msgData.username;
-    replyPreview.textContent = msgData.text;
-
-    replyBar.classList.remove('hidden');
-    DOM.chatInput.focus();
+if (btnCancelReply) {
+    btnCancelReply.addEventListener('click', cancelReply);
 }
 
 function cancelReply() {
