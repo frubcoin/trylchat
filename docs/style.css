@@ -99,6 +99,10 @@ body {
 }
 
 @media (max-width: 768px) {
+  .zoom-controls {
+    display: none !important;
+  }
+
   .bg {
     top: 0;
     left: 0;
