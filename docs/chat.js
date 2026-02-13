@@ -690,8 +690,13 @@ function initCustomUI() {
             document.getElementById('emoji-picker-container')?.classList.add('hidden');
             document.getElementById('color-picker-popover')?.classList.add('hidden');
 
-            if (!popover.classList.contains('hidden')) {
+            if (popover.classList.contains('hidden')) {
+                popover.classList.remove('hidden');
+                popover.style.display = 'flex'; // Force display
+                console.log('[UI] Removed hidden class');
+            } else {
                 popover.classList.add('hidden');
+                popover.style.display = 'none';
                 return;
             }
 
@@ -781,6 +786,12 @@ function updateCommandList() {
     if (isOwner) availablecommands = [...availablecommands, ...COMMANDS_DATA.owner];
 
     console.log('[UI] Command count:', availablecommands.length);
+
+    // Force simple content for debugging if empty
+    if (!availablecommands.length) {
+        commandPopover.innerHTML = '<div style="padding:10px; color:red;">No commands found</div>';
+        return;
+    }
 
     commandPopover.innerHTML = `
         <div class="command-header">
