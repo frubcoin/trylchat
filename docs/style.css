@@ -535,7 +535,7 @@ body {
 
 /* Messages */
 .chat-msg {
-  padding: 8px 0;
+  padding: 4px 0;
   animation: fadeIn 0.2s ease-out;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -1722,9 +1722,12 @@ body {
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 4px;
-  min-height: 20px;
-  /* Ensure space for empty container if needed */
 }
+
+.msg-reactions:empty {
+  display: none;
+}
+
 
 .reaction-pill {
   background: var(--bg-surface);

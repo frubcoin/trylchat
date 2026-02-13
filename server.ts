@@ -293,23 +293,39 @@ export default class NekoChat implements Party.Server {
 
       if (!username) return;
 
-      // ═══ SIGNATURE VERIFICATION (warn-only, for audit) ═══
-      if (parsed.signature && parsed.signMessage) {
+      // ═══ SIGNATURE VERIFICATION (Strict Enforcement) ═══
+      if (wallet) {
+        if (!parsed.signature || !parsed.signMessage) {
+          sender.send(JSON.stringify({
+            type: "join-error",
+            reason: "Signature required for wallet login."
+          }));
+          return;
+        }
+
         try {
           const sigBytes = Uint8Array.from(atob(parsed.signature), (c: string) => c.charCodeAt(0));
           const msgBytes = new TextEncoder().encode(parsed.signMessage);
           const pubKeyBytes = base58Decode(wallet);
           const isValid = await verifyEd25519(msgBytes, sigBytes, pubKeyBytes);
+
           if (!isValid) {
             console.warn(`[SIG] Invalid signature from ${wallet} (${username})`);
-          } else {
-            // console.log(`[SIG] Verified wallet ${wallet} for ${username}`);
+            sender.send(JSON.stringify({
+              type: "join-error",
+              reason: "Invalid wallet signature."
+            }));
+            return;
           }
+          // console.log(`[SIG] Verified wallet ${wallet} for ${username}`);
         } catch (err) {
           console.warn("[SIG] Verification error:", err);
+          sender.send(JSON.stringify({
+            type: "join-error",
+            reason: "Signature verification failed."
+          }));
+          return;
         }
-      } else {
-        // console.warn(`[SIG] No signature provided by ${wallet} (${username})`);
       }
 
       // Access control: gated rooms use token ownership, others use whitelist

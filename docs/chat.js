@@ -314,24 +314,42 @@ function renderRoomList() {
             if (isSwitchingRoom) return; // Prevent clicks during room switch
 
             if (room.gated && !hasToken) {
-                // Re-check token balance for visual update, but always attempt the switch
-                // (server handles admin bypass and final token check)
+                // Re-check token balance for visual update
                 li.querySelector('.room-icon').textContent = '⏳';
-                hasToken = await checkTokenBalance(currentWalletAddress);
+                const balanceOk = await checkTokenBalance(currentWalletAddress);
+                hasToken = balanceOk;
                 renderRoomList();
+                if (!balanceOk) {
+                    // Optional: maybe don't even try to switch if token check fails here?
+                    // But we let switchRoom handle the logic for consistency.
+                }
             }
 
-            switchRoom(room.id);
+            await switchRoom(room.id);
         });
 
         DOM.roomList.appendChild(li);
     });
 }
 
-function switchRoom(roomId) {
+async function switchRoom(roomId) {
     if (roomId === currentRoom && ws && ws.readyState === WebSocket.OPEN) return;
     if (isSwitchingRoom) return; // Prevent re-entry
     isSwitchingRoom = true;
+
+    // Ensure we have a signature for the current wallet before switching rooms
+    if (currentWalletAddress && !currentSignature) {
+        try {
+            console.log('[ROOM-SWITCH] Signature missing for current wallet, requesting...');
+            await signToAccess();
+        } catch (err) {
+            console.warn('[ROOM-SWITCH] Signature rejected, cancelling switch');
+            isSwitchingRoom = false;
+            renderRoomList();
+            return;
+        }
+    }
+
     currentRoom = roomId;
     DOM.chatMessages.innerHTML = '';
     // Clear pinned banner — new room will send its own
@@ -360,6 +378,7 @@ function switchRoom(roomId) {
     connectWebSocket(roomId);
     renderRoomList();
 }
+
 
 // ═══ WALLET FLOW (Phantom only) ═══
 
@@ -416,14 +435,20 @@ async function connectWallet(eager = false) {
             provider.off('disconnect');
             provider.on('accountChanged', (publicKey) => {
                 if (publicKey) {
-                    console.log('[WALLET] Account changed:', publicKey.toBase58());
-                    currentWalletAddress = publicKey.toBase58();
-                    loadWalletColor(currentWalletAddress);
-                    updateWalletUI();
-                    checkTokenBalance(currentWalletAddress).then(res => {
-                        hasToken = res;
-                        renderRoomList();
-                    });
+                    const newAddress = publicKey.toBase58();
+                    if (newAddress !== currentWalletAddress) {
+                        console.log('[WALLET] Account changed:', newAddress);
+                        currentWalletAddress = newAddress;
+                        // Force re-sign on change
+                        currentSignature = null;
+                        currentSignMsg = null;
+                        loadWalletColor(currentWalletAddress);
+                        updateWalletUI();
+                        checkTokenBalance(currentWalletAddress).then(res => {
+                            hasToken = res;
+                            renderRoomList();
+                        });
+                    }
                 } else {
                     // This can happen if user disconnects from within Phantom
                     handleWalletDisconnect();
