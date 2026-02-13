@@ -128,31 +128,26 @@ export default class NekoChat implements Party.Server {
 
   private async translateServerSide(text: string, targetLang: string): Promise<string | null> {
     const safeTarget = (targetLang || "en").toLowerCase();
-    if (!/^[a-z]{2}(?:-[a-z]{2})?$/i.test(safeTarget)) return null;
-    if (!text || text.length > 1000) return null;
-
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(safeTarget)}&dt=t&q=${encodeURIComponent(text)}`;
+    if (!text || text.length > 500) return null; // Logic: 10k neurons/day, keep chunks small-ish
 
     try {
-      const res = await fetch(url, {
-        headers: { "Accept": "application/json" }
+      // Cloudflare Workers AI Fallback (@cf/meta/m2m100-1.2b)
+      // This is free (10k neurons/day) and runs on the edge.
+      const ai = (this.room.env as any).AI;
+      if (!ai) return null;
+
+      const response = await ai.run('@cf/meta/m2m100-1.2b', {
+        text: text,
+        target_lang: safeTarget
       });
-      if (!res.ok) return null;
 
-      const data = await res.json() as any;
-      if (!Array.isArray(data) || !Array.isArray(data[0])) return null;
-
-      const translated = data[0]
-        .filter((chunk: any) => Array.isArray(chunk) && typeof chunk[0] === "string")
-        .map((chunk: any) => chunk[0])
-        .join("")
-        .trim();
-
-      return translated || null;
+      if (response && response.translated_text) {
+        return response.translated_text;
+      }
     } catch (err) {
-      console.warn("[TRANSLATE] Server-side translation failed:", err);
-      return null;
+      console.warn("[TRANSLATE] Cloudflare AI failed:", err);
     }
+    return null;
   }
 
   private async getAllAdminWallets(): Promise<string[]> {
@@ -391,7 +386,7 @@ export default class NekoChat implements Party.Server {
       const isMod = allMods.includes(wallet);
       const isOwner = wallet === ownerWallet;
 
-            const canEmbedUrls = await this.canShareUrl(wallet, isAdmin, isMod, isOwner);
+      const canEmbedUrls = await this.canShareUrl(wallet, isAdmin, isMod, isOwner);
       sender.setState({ username, color, wallet, isAdmin, isMod, isOwner, canEmbedUrls, isTyping: false });
 
       if (isAdmin || isMod || isOwner) {

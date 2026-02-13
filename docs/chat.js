@@ -16,18 +16,13 @@ const ROOMS = [
     { id: 'holders-lounge', name: '$UwU', icon: '◆', gated: true },
 ];
 
-let currentRoom = 'main-lobby';
-let hasToken = false;
-let currentSignature = null;
-let currentSignMsg = null;
-let currentWalletAddress = null;
+let pendingTranslations = new Map(); // text -> resolve function
 
 function getWsUrl(roomId) {
     return `${WS_PROTOCOL}://${PARTYKIT_HOST}/party/${roomId}`;
 }
 
 let ws;
-let reconnectTimer = null;
 let isSwitchingRoom = false;
 let typingTimeout = null;
 let isTyping = false;
@@ -152,6 +147,14 @@ function connectWebSocket(roomId) {
                 break;
             case 'game-series-end':
                 if (currentUsername) showGameOverlay('series-end', data);
+                break;
+
+            case 'translation-result':
+                const resolve = pendingTranslations.get(data.originalText);
+                if (resolve) {
+                    resolve(data.translatedText);
+                    pendingTranslations.delete(data.originalText);
+                }
                 break;
 
         }
@@ -1251,6 +1254,35 @@ async function translateText(text, targetLang) {
         } catch (err) {
             console.warn('[TRANSLATION] window.translation API failed:', err);
         }
+    }
+
+    // --- TIER 3: Cloudflare Workers AI Fallback (PartyKit) ---
+    console.log('[TRANSLATION] Falling back to server-side AI...');
+    try {
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                pendingTranslations.delete(text);
+                resolve(null);
+            }, 5000); // 5s timeout
+
+            pendingTranslations.set(text, (result) => {
+                clearTimeout(timeout);
+                resolve(result);
+            });
+
+            // Send request to server
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'translate',
+                    text: text,
+                    targetLang: targetLang
+                }));
+            } else {
+                resolve(null);
+            }
+        });
+    } catch (err) {
+        console.warn('[TRANSLATION] Server-side fallback failed:', err);
     }
 
     return null;
