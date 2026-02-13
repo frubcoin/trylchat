@@ -2136,6 +2136,11 @@ input[type=range].scale-slider {
   font-variant-numeric: tabular-nums;
 }
 
+#chat-messages {
+  /* Apply scaling only to the chat messages area */
+  zoom: var(--ui-scale, 1);
+}
+
 html {
   /* Apply scaling to the whole page */
   zoom: var(--ui-scale, 1);
