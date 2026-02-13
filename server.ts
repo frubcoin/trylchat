@@ -723,7 +723,7 @@ export default class NekoChat implements Party.Server {
       // Filter out timestamps outside the window
       const recent = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW);
 
-      if (recent.length >= MAX_MESSAGES_PER_WINDOW) {
+      if (!(isAdmin || isMod || isOwner) && recent.length >= MAX_MESSAGES_PER_WINDOW) {
         // Rate limit exceeded - send warning only to sender
         sender.send(JSON.stringify({
           type: "system-message",

@@ -698,7 +698,7 @@ function initCustomUI() {
                 <div class="palette-container">
                     <div class="palette-header">
                         <h3>Commands (${role.toUpperCase()})</h3>
-                        <span style="font-size:10px; opacity:0.6">ESC to close</span>
+                        <span style="font-size:10px; opacity:0.6; color:var(--text-muted)">ESC to close</span>
                     </div>
                     <div class="palette-list">
                         ${availablecommands.length ? availablecommands.map(c => `
@@ -706,12 +706,13 @@ function initCustomUI() {
                                 <div class="palette-cmd">${c.cmd}</div>
                                 <div class="palette-desc">${c.desc}</div>
                             </div>
-                        `).join('') : '<div style="padding:20px; text-align:center; color:var(--text-muted)">No commands available</div>'}
+                        `).join('') : '<div style="padding:40px; text-align:center; color:var(--text-muted)">No commands found for your role.</div>'}
                     </div>
                 </div>
             `;
 
             document.body.appendChild(overlay);
+            console.log('[PALETTE] Modal appended to body');
 
             // Add click listeners
             overlay.querySelectorAll('.palette-item').forEach(item => {
@@ -720,12 +721,16 @@ function initCustomUI() {
                     DOM.chatInput.value = cmd;
                     DOM.chatInput.focus();
                     overlay.remove();
+                    window.removeEventListener('keydown', handleEsc);
                 });
             });
 
-            // Close logic
+            // Close logic (backdrop)
             overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) overlay.remove();
+                if (e.target === overlay) {
+                    overlay.remove();
+                    window.removeEventListener('keydown', handleEsc);
+                }
             });
 
             const handleEsc = (e) => {
