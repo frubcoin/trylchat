@@ -768,13 +768,9 @@ body {
   height: 38px;
   padding: 0;
   flex-shrink: 0;
-
+  background: transparentma;
 }
 
-.btn-send:hover {
-  opacity: 1;
-  background: #1d1d1d;
-}
 
 /* ═══ EMOJI PICKER & COLOR PICKER ═══ */
 #emoji-wrapper {
