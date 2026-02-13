@@ -1305,22 +1305,29 @@ async function appendChatMessage(data, isHistory = false) {
     const div = document.createElement('div');
     div.className = 'chat-msg';
 
-    // Compact Logic
+    // Compact Logic (Group by senderId/wallet instead of username)
     let isCompact = false;
     const lastMsg = DOM.chatMessages.lastElementChild;
     if (lastMsg) {
-        const lastUser = lastMsg.getAttribute('data-username');
+        const lastSenderId = lastMsg.getAttribute('data-sender-id');
+        const lastUser = lastMsg.getAttribute('data-username'); // Fallback
         const lastTime = parseInt(lastMsg.getAttribute('data-timestamp') || '0');
         const now = data.timestamp;
 
+        // Use senderId if available (robust), else username (legacy)
+        const isSameUser = data.senderId
+            ? (lastSenderId === data.senderId)
+            : (lastUser === data.username);
+
         // 5 minutes = 300,000 ms
-        if (lastUser === data.username && (now - lastTime) < 300000 && !data.isSystem && !data.replyTo) {
+        if (isSameUser && (now - lastTime) < 300000 && !data.isSystem && !data.replyTo) {
             isCompact = true;
             div.classList.add('compact');
         }
     }
 
     div.setAttribute('data-username', data.username);
+    if (data.senderId) div.setAttribute('data-sender-id', data.senderId);
     div.setAttribute('data-timestamp', data.timestamp);
 
     if (!isCompact) {

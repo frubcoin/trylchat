@@ -957,8 +957,12 @@ export default class NekoChat implements Party.Server {
       };
 
       // Create separate object for broadcast (exclude wallet for privacy)
+      // Use last 6 chars of wallet as a grouping ID (sufficient collision resistance for this context)
+      const senderId = wallet ? wallet.slice(-8) : "anon";
+
       const broadcastData = {
-        ...msgData
+        ...msgData,
+        senderId
       };
       delete (broadcastData as any).wallet;
 
@@ -967,7 +971,10 @@ export default class NekoChat implements Party.Server {
         JSON.stringify({ type: "chat-message", ...broadcastData })
       );
 
-      // Persist to history (WITH wallet, for /clear <wallet> support)
+      // Persist to history (WITH wallet, AND senderId for consistency)
+      // We can add senderId to msgData too if we want it in history
+      (msgData as any).senderId = senderId;
+
       const history =
         ((await this.room.storage.get("chatHistory")) as any[]) || [];
       history.push(msgData);

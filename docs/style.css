@@ -627,8 +627,9 @@ body {
 
 #typing-indicator {
   position: absolute;
-  bottom: 90px;
+  bottom: 100%;
   left: 24px;
+  margin-bottom: 8px;
   z-index: 2000;
   max-width: 90%;
   pointer-events: none;
@@ -709,6 +710,8 @@ body {
   padding: 16px 24px;
   display: flex;
   justify-content: center;
+  position: relative;
+  /* Context for typing indicator */
   /* Center the input container */
 }
 
