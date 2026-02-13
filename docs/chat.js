@@ -668,13 +668,18 @@ function initCustomUI() {
     // Commands
     const btnCommands = document.getElementById('btn-commands');
     if (btnCommands) {
-        // Create popover in body if not exists
+        // Create popover in body if not exists, or move existing one
         let popover = document.getElementById('command-popover');
-        if (!popover) {
+        if (popover && popover.parentNode !== document.body) {
+            popover.parentNode.removeChild(popover);
+            document.body.appendChild(popover);
+            console.log('[UI] Moved existing command-popover to body');
+        } else if (!popover) {
             popover = document.createElement('div');
             popover.id = 'command-popover';
             popover.className = 'hidden';
             document.body.appendChild(popover);
+            console.log('[UI] Created new command-popover in body');
         }
 
         btnCommands.addEventListener('click', (e) => {
@@ -692,10 +697,20 @@ function initCustomUI() {
 
             // Position it
             const rect = btnCommands.getBoundingClientRect();
+            console.log('[UI] Button rect:', rect);
+
             // Popover width is ~250px. Align right edge with button right, or center
             popover.style.position = 'fixed'; // Fixed to viewport
             popover.style.bottom = (window.innerHeight - rect.top + 10) + 'px'; // Above button
             popover.style.left = (rect.right - 250) + 'px'; // Offset left
+            popover.style.right = 'auto'; // Override CSS
+            popover.style.top = 'auto'; // Override CSS
+
+            console.log('[UI] Popover styles:', {
+                bottom: popover.style.bottom,
+                left: popover.style.left,
+                zIndex: window.getComputedStyle(popover).zIndex
+            });
 
             popover.classList.remove('hidden');
             updateCommandList();
@@ -758,11 +773,14 @@ function updateCommandList() {
     if (!commandPopover) return;
 
     const role = isOwner ? 'owner' : (isAdmin ? 'admin' : (isMod ? 'mod' : 'user'));
+    console.log('[UI] Updating command list for role:', role);
     let availablecommands = [...COMMANDS_DATA.user];
 
     if (isMod || isAdmin || isOwner) availablecommands = [...availablecommands, ...COMMANDS_DATA.mod];
     if (isAdmin || isOwner) availablecommands = [...availablecommands, ...COMMANDS_DATA.admin];
     if (isOwner) availablecommands = [...availablecommands, ...COMMANDS_DATA.owner];
+
+    console.log('[UI] Command count:', availablecommands.length);
 
     commandPopover.innerHTML = `
         <div class="command-header">
