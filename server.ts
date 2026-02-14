@@ -84,7 +84,7 @@ const GATED_ROOMS = ["holders-lounge"];
 // Rate limit: 5 messages per 10 seconds
 const RATE_LIMIT_WINDOW = 10000;
 const MAX_MESSAGES_PER_WINDOW = 5;
-const AUTH_CHALLENGE_TTL_MS = 2 * 60 * 1000;
+const AUTH_CHALLENGE_TTL_MS = 10 * 60 * 1000;
 const HTTP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const HTTP_RATE_LIMIT_MAX = 30;
 const TRIVIAL_TRANSLATION_MESSAGES = new Set(["ok", "k", "kk", "lol", "lmao", "gg", "gm", "gn", "yes", "no", "np", "ty", "thx"]);
@@ -95,7 +95,7 @@ type DetectCacheEntry = { language: string; confidence: number; timestamp: numbe
 type SenderLanguageHint = { language: string; confidence: number; timestamp: number };
 
 export default class NekoChat implements Party.Server {
-  authChallenges = new Map<string, { nonce: string; roomId: string; expiresAt: number }>();
+  authChallenges = new Map<string, { nonce: string; roomId: string; expiresAt: number }[]>();
   httpRateLimits = new Map<string, number[]>();
   translationCache = new Map<string, TranslationCacheEntry>();
   detectCache = new Map<string, DetectCacheEntry>();
@@ -327,7 +327,11 @@ export default class NekoChat implements Party.Server {
     const normalizedWallet = this.normalizeWallet(wallet);
     const nonce = crypto.randomUUID();
     const expiresAt = Date.now() + AUTH_CHALLENGE_TTL_MS;
-    this.authChallenges.set(normalizedWallet, { nonce, roomId: this.room.id, expiresAt });
+    const existing = (this.authChallenges.get(normalizedWallet) || [])
+      .filter((c) => Date.now() <= c.expiresAt && c.roomId === this.room.id);
+    existing.push({ nonce, roomId: this.room.id, expiresAt });
+    // Keep only the newest few challenges to avoid stale buildup.
+    this.authChallenges.set(normalizedWallet, existing.slice(-3));
     return {
       nonce,
       message: this.buildSignMessage(this.room.id, nonce),
@@ -337,17 +341,26 @@ export default class NekoChat implements Party.Server {
 
   private validateAuthChallenge(wallet: string, nonce: string, signMessage: string): { ok: boolean; reason?: string } {
     const normalizedWallet = this.normalizeWallet(wallet);
-    const pending = this.authChallenges.get(normalizedWallet);
-    if (!pending) return { ok: false, reason: "Missing auth challenge. Please sign in again." };
-    if (pending.roomId !== this.room.id) return { ok: false, reason: "Auth challenge room mismatch." };
-    if (Date.now() > pending.expiresAt) {
+    const pendingList = (this.authChallenges.get(normalizedWallet) || [])
+      .filter((c) => c.roomId === this.room.id && Date.now() <= c.expiresAt);
+    if (pendingList.length === 0) {
       this.authChallenges.delete(normalizedWallet);
       return { ok: false, reason: "Auth challenge expired. Please sign in again." };
     }
-    if (pending.nonce !== nonce) return { ok: false, reason: "Invalid auth challenge nonce." };
+    this.authChallenges.set(normalizedWallet, pendingList);
+    const pending = pendingList.find((c) => c.nonce === nonce);
+    if (!pending) return { ok: false, reason: "Invalid auth challenge nonce." };
     const expectedMessage = this.buildSignMessage(this.room.id, nonce);
     if (signMessage !== expectedMessage) return { ok: false, reason: "Invalid signed message." };
     return { ok: true };
+  }
+
+  private consumeAuthChallenge(wallet: string, nonce: string) {
+    const normalizedWallet = this.normalizeWallet(wallet);
+    const pendingList = this.authChallenges.get(normalizedWallet) || [];
+    const remaining = pendingList.filter((c) => c.nonce !== nonce && Date.now() <= c.expiresAt && c.roomId === this.room.id);
+    if (remaining.length > 0) this.authChallenges.set(normalizedWallet, remaining);
+    else this.authChallenges.delete(normalizedWallet);
   }
 
   private static isAllowedOrigin(origin: string): boolean {
@@ -725,7 +738,7 @@ export default class NekoChat implements Party.Server {
             return;
           }
           // Single-use challenge token to prevent replay within TTL.
-          this.authChallenges.delete(this.normalizeWallet(wallet));
+          this.consumeAuthChallenge(wallet, String(parsed.authNonce || ""));
           // console.log(`[SIG] Verified wallet ${wallet} for ${username}`);
         } catch (err) {
           console.warn("[SIG] Verification error:", err);
