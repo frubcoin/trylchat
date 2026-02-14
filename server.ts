@@ -1301,11 +1301,17 @@ export default class NekoChat implements Party.Server {
         }
       }
 
-      if (shouldTranslate && sourceLanguage) {
-        targetLanguages.delete(sourceLanguage);
+      if (shouldTranslate) {
+        if (sourceLanguage) {
+          targetLanguages.delete(sourceLanguage);
+        }
         const targets = [...targetLanguages];
         const results = await Promise.all(
-          targets.map(async (target) => ({ target, translated: await this.translateGoogle(translationInput, target, sourceLanguage) }))
+          targets.map(async (target) => ({
+            target,
+            // Fallback to provider auto-detect when local detect failed.
+            translated: await this.translateGoogle(translationInput, target, sourceLanguage || null)
+          }))
         );
         for (const item of results) {
           if (item.translated && item.translated.toLowerCase() !== translationInput.toLowerCase()) {

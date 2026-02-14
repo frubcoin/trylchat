@@ -32,6 +32,7 @@ let signedForRoom = null;
 let signedAtMs = 0;
 const CLIENT_AUTH_MAX_AGE_MS = 8 * 60 * 1000; // Keep below server TTL to avoid expiry race.
 let joinRecoveryAttempted = false;
+let signInFlight = null;
 let currentWalletAddress = null;
 let walletProvider = null;
 let walletListenersAttached = false;
@@ -778,9 +779,7 @@ async function connectWallet(eager = false) {
             attachWalletListeners(provider);
 
             if (!eager) {
-                // If this was a manual click, we proceed to signing
-                setWalletButtonBusy(true, 'Signing...');
-                await signToAccess();
+                // Manual connect only: defer signing until room join/auth.
                 goToStep2();
             }
         } catch (err) {
@@ -793,7 +792,7 @@ async function connectWallet(eager = false) {
                 }
             }
         } finally {
-            if (!eager) setWalletButtonBusy(false, currentWalletAddress ? 'Sign & Enter →' : 'Connect Phantom');
+            if (!eager) setWalletButtonBusy(false, currentWalletAddress ? 'Connected' : 'Connect Phantom');
             if (!eager) isConnecting = false;
         }
     } else if (!eager) {
@@ -828,7 +827,12 @@ async function ensureSignedForRoom(roomId) {
     if (!currentWalletAddress) return true;
     const isFresh = signedAtMs > 0 && (Date.now() - signedAtMs) < CLIENT_AUTH_MAX_AGE_MS;
     if (currentSignature && currentSignMsg && currentAuthNonce && signedForRoom === roomId && isFresh) return true;
-    await signToAccess(roomId);
+    if (signInFlight) {
+        await signInFlight;
+        return true;
+    }
+    signInFlight = signToAccess(roomId).finally(() => { signInFlight = null; });
+    await signInFlight;
     return true;
 }
 
