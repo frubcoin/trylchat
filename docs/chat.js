@@ -29,6 +29,9 @@ let currentSignature = null;
 let currentSignMsg = null;
 let currentAuthNonce = null;
 let signedForRoom = null;
+let signedAtMs = 0;
+const CLIENT_AUTH_MAX_AGE_MS = 8 * 60 * 1000; // Keep below server TTL to avoid expiry race.
+let joinRecoveryAttempted = false;
 let currentWalletAddress = null;
 let walletProvider = null;
 let walletListenersAttached = false;
@@ -88,6 +91,7 @@ function connectWebSocket(roomId) {
         switch (data.type) {
             case 'identity':
                 console.log('[IDENTITY] info:', data);
+                joinRecoveryAttempted = false;
                 isOwner = data.isOwner;
                 isAdmin = data.isAdmin;
                 isMod = data.isMod;
@@ -168,11 +172,43 @@ function connectWebSocket(roomId) {
                 break;
             case 'join-error':
                 console.error('[JOIN-ERROR]', data.reason);
-                if (typeof data.reason === 'string' && /challenge|signature/i.test(data.reason)) {
+                const isAuthError = typeof data.reason === 'string' && /challenge|signature|nonce|expired/i.test(data.reason);
+                if (isAuthError) {
                     currentSignature = null;
                     currentSignMsg = null;
                     currentAuthNonce = null;
                     signedForRoom = null;
+                    signedAtMs = 0;
+                }
+
+                // One silent recovery attempt for expired/stale challenge before surfacing to user.
+                if (
+                    isAuthError &&
+                    !joinRecoveryAttempted &&
+                    ws === thisWs &&
+                    ws &&
+                    ws.readyState === WebSocket.OPEN &&
+                    currentUsername &&
+                    currentWalletAddress
+                ) {
+                    joinRecoveryAttempted = true;
+                    try {
+                        await ensureSignedForRoom(currentRoom);
+                        ws.send(JSON.stringify({
+                            type: 'join',
+                            username: currentUsername,
+                            wallet: currentWalletAddress,
+                            signature: currentSignature,
+                            signMessage: currentSignMsg,
+                            authNonce: currentAuthNonce,
+                            color: userColor,
+                            language: userLanguage,
+                            translationEnabled
+                        }));
+                        return;
+                    } catch (err) {
+                        console.error('[JOIN-RECOVERY] Re-sign failed:', err);
+                    }
                 }
                 isSwitchingRoom = false; // Reset so we can switch back
                 if (DOM.loginOverlay.classList.contains('hidden')) {
@@ -699,6 +735,7 @@ function handleWalletAccountChanged(publicKey) {
             currentSignMsg = null;
             currentAuthNonce = null;
             signedForRoom = null;
+            signedAtMs = 0;
             loadWalletColor(currentWalletAddress);
             updateWalletUI();
             checkTokenBalance(currentWalletAddress).then(res => {
@@ -776,6 +813,7 @@ function handleWalletDisconnect() {
     currentSignMsg = null;
     currentAuthNonce = null;
     signedForRoom = null;
+    signedAtMs = 0;
     walletProvider = null;
     walletListenersAttached = false;
     hasToken = false;
@@ -788,7 +826,8 @@ function handleWalletDisconnect() {
 
 async function ensureSignedForRoom(roomId) {
     if (!currentWalletAddress) return true;
-    if (currentSignature && currentSignMsg && currentAuthNonce && signedForRoom === roomId) return true;
+    const isFresh = signedAtMs > 0 && (Date.now() - signedAtMs) < CLIENT_AUTH_MAX_AGE_MS;
+    if (currentSignature && currentSignMsg && currentAuthNonce && signedForRoom === roomId && isFresh) return true;
     await signToAccess(roomId);
     return true;
 }
@@ -810,6 +849,8 @@ async function signToAccess(roomId = currentRoom) {
         currentSignMsg = msg;
         currentAuthNonce = nonce;
         signedForRoom = roomId;
+        signedAtMs = Date.now();
+        joinRecoveryAttempted = false;
         console.log('[WALLET] Message signed successfully');
     } catch (signErr) {
         console.error('[WALLET] Sign failed:', signErr);
