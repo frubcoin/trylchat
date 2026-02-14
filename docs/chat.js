@@ -2373,6 +2373,11 @@ function setupGestures() {
             return;
         }
 
+        // Native mobile taps are reliable in sidebars; avoid synthetic double/blocked clicks.
+        if (target.closest('#sidebar, #rooms-sidebar')) {
+            return;
+        }
+
         const clickable = target.closest('button, .room-item');
         if (clickable) {
             clickable.click();

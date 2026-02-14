@@ -2422,7 +2422,12 @@ input[type=range].scale-slider {
     display: flex !important;
     background: var(--bg-elevated);
     overflow-y: auto;
+    touch-action: pan-y;
     transition: transform 0.25s ease;
+  }
+
+  .resize-handle {
+    display: none !important;
   }
 
   #rooms-sidebar {
