@@ -87,10 +87,12 @@ const MAX_MESSAGES_PER_WINDOW = 5;
 const AUTH_CHALLENGE_TTL_MS = 2 * 60 * 1000;
 const HTTP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const HTTP_RATE_LIMIT_MAX = 30;
+const TRIVIAL_TRANSLATION_MESSAGES = new Set(["ok", "k", "kk", "lol", "lmao", "gg", "gm", "gn", "yes", "no", "np", "ty", "thx"]);
 
 type GameState = "IDLE" | "READY" | "GO";
 type TranslationCacheEntry = { translatedText: string; timestamp: number };
-type DetectCacheEntry = { language: string; timestamp: number };
+type DetectCacheEntry = { language: string; confidence: number; timestamp: number };
+type SenderLanguageHint = { language: string; confidence: number; timestamp: number };
 
 export default class NekoChat implements Party.Server {
   authChallenges = new Map<string, { nonce: string; roomId: string; expiresAt: number }>();
@@ -102,8 +104,20 @@ export default class NekoChat implements Party.Server {
   readonly TRANSLATION_CACHE_MAX = 2000;
   readonly DETECT_CACHE_MAX = 2000;
   readonly TRANSLATION_MONTHLY_LIMIT = 500_000;
+  readonly TRANSLATION_DAILY_SOFT_LIMIT: number;
+  readonly TRANSLATION_MESSAGE_CHAR_CAP = 400;
+  readonly TRANSLATION_MIN_MESSAGE_LENGTH = 3;
+  readonly TRANSLATION_DETECT_MIN_CONFIDENCE = 0.55;
+  readonly SENDER_LANGUAGE_HINT_TTL_MS = 2 * 60 * 1000; // 2 minutes
   monthlyTranslationMonth: string | null = null;
   monthlyTranslationChars = 0;
+  dailyTranslationDay: string | null = null;
+  dailyTranslationChars = 0;
+  senderLanguageHints = new Map<string, SenderLanguageHint>();
+  typingEventTimestamps = new Map<string, number>();
+  cursorEventTimestamps = new Map<string, number>();
+  readonly TYPING_MIN_INTERVAL_MS = 250;
+  readonly CURSOR_MIN_INTERVAL_MS = 40;
 
   private normalizeLanguageCode(value: unknown): string {
     const raw = String(value || "").trim().toLowerCase();
@@ -128,6 +142,14 @@ export default class NekoChat implements Party.Server {
     return `${year}-${month}`;
   }
 
+  private getCurrentDayKey(): string {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(now.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
   private async ensureMonthlyTranslationUsageLoaded() {
     const monthKey = this.getCurrentMonthKey();
     if (this.monthlyTranslationMonth === monthKey) return;
@@ -135,31 +157,85 @@ export default class NekoChat implements Party.Server {
     this.monthlyTranslationChars = ((await this.room.storage.get<number>(`translationUsage:${monthKey}`)) as number) || 0;
   }
 
+  private async ensureDailyTranslationUsageLoaded() {
+    const dayKey = this.getCurrentDayKey();
+    if (this.dailyTranslationDay === dayKey) return;
+    this.dailyTranslationDay = dayKey;
+    this.dailyTranslationChars = ((await this.room.storage.get<number>(`translationUsageDaily:${dayKey}`)) as number) || 0;
+  }
+
   private async canSpendTranslationChars(chars: number): Promise<boolean> {
     if (chars <= 0) return true;
     await this.ensureMonthlyTranslationUsageLoaded();
-    return (this.monthlyTranslationChars + chars) <= this.TRANSLATION_MONTHLY_LIMIT;
+    await this.ensureDailyTranslationUsageLoaded();
+    return (this.monthlyTranslationChars + chars) <= this.TRANSLATION_MONTHLY_LIMIT
+      && (this.dailyTranslationChars + chars) <= this.TRANSLATION_DAILY_SOFT_LIMIT;
   }
 
   private async recordTranslationChars(chars: number) {
     if (chars <= 0) return;
     await this.ensureMonthlyTranslationUsageLoaded();
+    await this.ensureDailyTranslationUsageLoaded();
     this.monthlyTranslationChars += chars;
+    this.dailyTranslationChars += chars;
     const monthKey = this.monthlyTranslationMonth as string;
+    const dayKey = this.dailyTranslationDay as string;
     await this.room.storage.put(`translationUsage:${monthKey}`, this.monthlyTranslationChars);
+    await this.room.storage.put(`translationUsageDaily:${dayKey}`, this.dailyTranslationChars);
   }
 
-  private async detectLanguageGoogle(text: string): Promise<string | null> {
+  private normalizeTranslationText(input: string): string {
+    return String(input || "").replace(/\s+/g, " ").trim();
+  }
+
+  private shouldAttemptTranslation(text: string): boolean {
+    if (!text) return false;
+    if (text.length < this.TRANSLATION_MIN_MESSAGE_LENGTH) return false;
+    const lowered = text.toLowerCase();
+    if (TRIVIAL_TRANSLATION_MESSAGES.has(lowered)) return false;
+
+    const withoutUrls = text.replace(/https?:\/\/\S+/gi, "").trim();
+    // Skip messages that are mostly emoji/symbols/URLs and have no letters.
+    if (!/\p{L}/u.test(withoutUrls)) return false;
+    return true;
+  }
+
+  private getSenderLanguageHint(senderId: string): SenderLanguageHint | null {
+    if (!senderId) return null;
+    const cached = this.senderLanguageHints.get(senderId);
+    if (!cached) return null;
+    if ((Date.now() - cached.timestamp) > this.SENDER_LANGUAGE_HINT_TTL_MS) {
+      this.senderLanguageHints.delete(senderId);
+      return null;
+    }
+    return cached;
+  }
+
+  private setSenderLanguageHint(senderId: string, language: string, confidence: number) {
+    if (!senderId || !language) return;
+    this.senderLanguageHints.set(senderId, { language, confidence, timestamp: Date.now() });
+  }
+
+  private shouldProcessRealtimeEvent(cache: Map<string, number>, id: string, minIntervalMs: number): boolean {
+    const now = Date.now();
+    const last = cache.get(id) || 0;
+    if ((now - last) < minIntervalMs) return false;
+    cache.set(id, now);
+    return true;
+  }
+
+  private async detectLanguageGoogle(text: string): Promise<{ language: string; confidence: number } | null> {
     const apiKey = String((this.room.env.GOOGLE_TRANSLATE_API_KEY as string) || "").trim();
     if (!apiKey) return null;
 
-    const cacheKey = text;
+    const normalizedText = this.normalizeTranslationText(text);
+    const cacheKey = normalizedText;
     const cached = this.detectCache.get(cacheKey);
     const now = Date.now();
     if (cached && (now - cached.timestamp) < this.DETECT_CACHE_TTL_MS) {
-      return cached.language;
+      return { language: cached.language, confidence: cached.confidence };
     }
-    if (!(await this.canSpendTranslationChars(text.length))) {
+    if (!(await this.canSpendTranslationChars(normalizedText.length))) {
       return null;
     }
 
@@ -167,17 +243,22 @@ export default class NekoChat implements Party.Server {
       const res = await fetch(`https://translation.googleapis.com/language/translate/v2/detect?key=${encodeURIComponent(apiKey)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: text })
+        body: JSON.stringify({ q: normalizedText })
       });
       if (!res.ok) return null;
       const data = await res.json() as any;
-      const lang = String(data?.data?.detections?.[0]?.[0]?.language || "").toLowerCase();
+      const top = data?.data?.detections?.[0]?.[0];
+      const lang = String(top?.language || "").toLowerCase();
+      const confidence = Number(top?.confidence ?? 0);
+      const isReliable = top?.isReliable;
       const normalized = this.normalizeLanguageCode(lang);
       if (!normalized) return null;
-      await this.recordTranslationChars(text.length);
-      this.detectCache.set(cacheKey, { language: normalized, timestamp: now });
+      if (Number.isFinite(confidence) && confidence > 0 && confidence < this.TRANSLATION_DETECT_MIN_CONFIDENCE) return null;
+      if (isReliable === false) return null;
+      await this.recordTranslationChars(normalizedText.length);
+      this.detectCache.set(cacheKey, { language: normalized, confidence: Number.isFinite(confidence) ? confidence : 1, timestamp: now });
       this.pruneCache(this.detectCache, this.DETECT_CACHE_MAX);
-      return normalized;
+      return { language: normalized, confidence: Number.isFinite(confidence) ? confidence : 1 };
     } catch {
       return null;
     }
@@ -192,19 +273,20 @@ export default class NekoChat implements Party.Server {
     if (!target) return null;
     if (source && source === target) return null;
 
-    const cacheKey = `${source || "auto"}|${target}|${text}`;
+    const normalizedText = this.normalizeTranslationText(text);
+    const cacheKey = `${source || "auto"}|${target}|${normalizedText}`;
     const cached = this.translationCache.get(cacheKey);
     const now = Date.now();
     if (cached && (now - cached.timestamp) < this.TRANSLATION_CACHE_TTL_MS) {
       return cached.translatedText;
     }
 
-    if (!(await this.canSpendTranslationChars(text.length))) {
+    if (!(await this.canSpendTranslationChars(normalizedText.length))) {
       return null;
     }
 
     try {
-      const body: Record<string, string> = { q: text, target, format: "text" };
+      const body: Record<string, string> = { q: normalizedText, target, format: "text" };
       if (source) body.source = source;
       const res = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(apiKey)}`, {
         method: "POST",
@@ -215,7 +297,7 @@ export default class NekoChat implements Party.Server {
       const data = await res.json() as any;
       const translatedText = String(data?.data?.translations?.[0]?.translatedText || "").trim();
       if (!translatedText) return null;
-      await this.recordTranslationChars(text.length);
+      await this.recordTranslationChars(normalizedText.length);
       this.translationCache.set(cacheKey, { translatedText, timestamp: now });
       this.pruneCache(this.translationCache, this.TRANSLATION_CACHE_MAX);
       return translatedText;
@@ -386,6 +468,8 @@ export default class NekoChat implements Party.Server {
 
   constructor(readonly room: Party.Room) {
     this.tokenCache = new Map();
+    const dailyCapRaw = Number((this.room.env.TRANSLATION_DAILY_SOFT_LIMIT as string) || 15000);
+    this.TRANSLATION_DAILY_SOFT_LIMIT = Number.isFinite(dailyCapRaw) && dailyCapRaw > 0 ? Math.floor(dailyCapRaw) : 15000;
   }
 
   private getTokenCheckEndpoints(): string[] {
@@ -576,11 +660,9 @@ export default class NekoChat implements Party.Server {
   }
 
   async onConnect(conn: Party.Connection) {
-    // Increment visitor count
-    let visitorCount =
+    // Send current visitor count; increment happens on successful join.
+    const visitorCount =
       ((await this.room.storage.get("realVisitorCount")) as number) || 0;
-    visitorCount++;
-    await this.room.storage.put("realVisitorCount", visitorCount);
 
     // Send visitor count & pinned message to the new connection
     conn.send(JSON.stringify({ type: "visitor-count", count: visitorCount }));
@@ -642,6 +724,8 @@ export default class NekoChat implements Party.Server {
             }));
             return;
           }
+          // Single-use challenge token to prevent replay within TTL.
+          this.authChallenges.delete(this.normalizeWallet(wallet));
           // console.log(`[SIG] Verified wallet ${wallet} for ${username}`);
         } catch (err) {
           console.warn("[SIG] Verification error:", err);
@@ -748,6 +832,15 @@ export default class NekoChat implements Party.Server {
         language,
         translationEnabled
       }));
+
+      // Count only successful authenticated joins.
+      const alreadyCounted = !!(sender.state as any)?.visitorCounted;
+      if (!alreadyCounted) {
+        const visitorCount = (((await this.room.storage.get("realVisitorCount")) as number) || 0) + 1;
+        await this.room.storage.put("realVisitorCount", visitorCount);
+        sender.send(JSON.stringify({ type: "visitor-count", count: visitorCount }));
+        sender.setState({ ...(sender.state as any), visitorCounted: true });
+      }
 
       // ... (rest of join logic) ...
 
@@ -987,6 +1080,7 @@ export default class NekoChat implements Party.Server {
     if (parsed.type === "typing") {
       const state = sender.state as any;
       if (!state?.username) return;
+      if (!this.shouldProcessRealtimeEvent(this.typingEventTimestamps, sender.id, this.TYPING_MIN_INTERVAL_MS)) return;
       sender.setState({ ...state, isTyping: !!parsed.isTyping });
       await this.broadcastTypingUsers();
       return;
@@ -1015,6 +1109,7 @@ export default class NekoChat implements Party.Server {
 
 
     if (parsed.type === "chat") {
+      if (typeof parsed.text !== "string") return;
       const { username, color, isAdmin, isMod, isOwner, wallet } = sender.state as {
         wallet?: string;
         username: string;
@@ -1177,15 +1272,31 @@ export default class NekoChat implements Party.Server {
 
       let sourceLanguage: string | null = null;
       const translatedByTarget = new Map<string, string>();
-      if (targetLanguages.size > 0) {
-        sourceLanguage = await this.detectLanguageGoogle(text);
-        if (sourceLanguage) {
-          targetLanguages.delete(sourceLanguage);
-          for (const target of targetLanguages) {
-            const translated = await this.translateGoogle(text, target, sourceLanguage);
-            if (translated && translated.toLowerCase() !== text.toLowerCase()) {
-              translatedByTarget.set(target, translated);
-            }
+      const translationInput = this.normalizeTranslationText(text).slice(0, this.TRANSLATION_MESSAGE_CHAR_CAP);
+      const shouldTranslate = targetLanguages.size > 0 && this.shouldAttemptTranslation(translationInput);
+
+      if (shouldTranslate) {
+        const senderHint = this.getSenderLanguageHint(sender.id);
+        if (senderHint) {
+          sourceLanguage = senderHint.language;
+        } else {
+          const detected = await this.detectLanguageGoogle(translationInput);
+          if (detected) {
+            sourceLanguage = detected.language;
+            this.setSenderLanguageHint(sender.id, detected.language, detected.confidence);
+          }
+        }
+      }
+
+      if (shouldTranslate && sourceLanguage) {
+        targetLanguages.delete(sourceLanguage);
+        const targets = [...targetLanguages];
+        const results = await Promise.all(
+          targets.map(async (target) => ({ target, translated: await this.translateGoogle(translationInput, target, sourceLanguage) }))
+        );
+        for (const item of results) {
+          if (item.translated && item.translated.toLowerCase() !== translationInput.toLowerCase()) {
+            translatedByTarget.set(item.target, item.translated);
           }
         }
       }
@@ -1236,6 +1347,10 @@ export default class NekoChat implements Party.Server {
     if (parsed.type === "cursor") {
       const state = sender.state as any;
       if (!state?.username) return;
+      if (!this.shouldProcessRealtimeEvent(this.cursorEventTimestamps, sender.id, this.CURSOR_MIN_INTERVAL_MS)) return;
+      const x = Number(parsed.x);
+      const y = Number(parsed.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
       this.room.broadcast(
         JSON.stringify({
@@ -1243,8 +1358,8 @@ export default class NekoChat implements Party.Server {
           id: sender.id,
           username: state.username,
           color: state.color,
-          x: parsed.x,
-          y: parsed.y,
+          x,
+          y,
         }),
         [sender.id] // exclude sender
       );
@@ -1321,6 +1436,9 @@ export default class NekoChat implements Party.Server {
   }
 
   async onClose(conn: Party.Connection) {
+    this.typingEventTimestamps.delete(conn.id);
+    this.cursorEventTimestamps.delete(conn.id);
+    this.senderLanguageHints.delete(conn.id);
     const state = conn.state as any;
     if (state?.username) {
       // Broadcast leave message

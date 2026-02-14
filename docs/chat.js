@@ -1546,6 +1546,7 @@ function linkifyText(text) {
 function getEmbedUrl(urlString) {
     try {
         const url = new URL(urlString);
+        if (!/^https?:$/i.test(url.protocol)) return null;
         const host = url.hostname.replace(/^www\./, '');
 
         if ((host === 'youtube.com' || host === 'youtu.be')) {
@@ -1812,11 +1813,24 @@ async function appendChatMessage(data, isHistory = false) {
             const wrap = document.createElement('div');
             wrap.className = 'msg-embed';
             if (embed.type === 'iframe') {
-                wrap.innerHTML = `<iframe src="${embed.src}" loading="lazy" allowfullscreen referrerpolicy="no-referrer"></iframe>`;
+                const iframe = document.createElement('iframe');
+                iframe.src = embed.src;
+                iframe.loading = 'lazy';
+                iframe.allowFullscreen = true;
+                iframe.referrerPolicy = 'no-referrer';
+                wrap.appendChild(iframe);
             } else if (embed.type === 'img') {
-                wrap.innerHTML = `<img src="${embed.src}" alt="embedded content" loading="lazy">`;
+                const img = document.createElement('img');
+                img.src = embed.src;
+                img.alt = 'embedded content';
+                img.loading = 'lazy';
+                wrap.appendChild(img);
             } else if (embed.type === 'video') {
-                wrap.innerHTML = `<video src="${embed.src}" controls preload="metadata"></video>`;
+                const video = document.createElement('video');
+                video.src = embed.src;
+                video.controls = true;
+                video.preload = 'metadata';
+                wrap.appendChild(video);
             }
             div.appendChild(wrap);
         }
