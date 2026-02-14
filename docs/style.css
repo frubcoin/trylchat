@@ -2412,6 +2412,13 @@ input[type=range].scale-slider {
     touch-action: pan-y;
   }
 
+  /* Keep composer below mobile drawers/backdrop. */
+  #chat-form,
+  #chat-input-area,
+  #emoji-wrapper {
+    z-index: 1 !important;
+  }
+
   #rooms-sidebar,
   #sidebar {
     position: fixed !important;
