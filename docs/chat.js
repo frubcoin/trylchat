@@ -195,6 +195,7 @@ function connectWebSocket(roomId) {
                 break;
             case 'clear-chat':
                 DOM.chatMessages.innerHTML = '';
+                clearTranslationCacheForRoom(currentRoom);
                 appendSystemMessage({ text: '✦ Chat cleared by admin ✦' });
                 break;
             case 'pinned-update':
@@ -323,6 +324,21 @@ function saveTranslationCache() {
 
 function getTranslationCacheKey(roomId, lang, msgId) {
     return `${roomId}|${lang}|${msgId}`;
+}
+
+function clearTranslationCacheForRoom(roomId) {
+    if (!roomId) return;
+    const prefix = `${roomId}|`;
+    let changed = false;
+    for (const key of Object.keys(translationCache)) {
+        if (key.startsWith(prefix)) {
+            delete translationCache[key];
+            changed = true;
+        }
+    }
+    if (changed) {
+        saveTranslationCache();
+    }
 }
 
 function pruneTranslationCache() {
